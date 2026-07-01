@@ -8,3 +8,5 @@ python-dotenv
 neo4j
 langchain-openai
 langchain-ollama
+fastapi
+uvicorn

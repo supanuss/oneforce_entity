@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forensics KG Dashboard</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #697586;
+      --line: #d9dee7;
+      --blue: #1f6feb;
+      --green: #16803c;
+      --red: #b42318;
+      --amber: #a15c00;
+      --ink: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 700;
+    }
+
+    main {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    select, button, input {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    button {
+      cursor: pointer;
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 86px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .metric .value {
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 750;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .panel h2 {
+      margin: 0;
+      padding: 12px 14px;
+      font-size: 15px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    #graph {
+      height: 620px;
+      width: 100%;
+      background: #fff;
+    }
+
+    .timeline {
+      max-height: 620px;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #edf0f5;
+    }
+
+    .event:last-child { border-bottom: none; }
+
+    .dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .event.transfer .dot { background: var(--green); }
+    .event.refund .dot { background: var(--amber); }
+    .event.report .dot { background: var(--red); }
+
+    .event-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .event-body {
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .tables {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #edf0f5;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfcfe;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .table-wrap {
+      max-height: 410px;
+      overflow: auto;
+    }
+
+    .money {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #1f4fbf;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .muted { color: var(--muted); }
+    .nowrap { white-space: nowrap; }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout, .tables { grid-template-columns: 1fr; }
+      #graph { height: 520px; }
+    }
+
+    @media (max-width: 640px) {
+      header { height: auto; align-items: stretch; flex-direction: column; gap: 10px; padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+      main { padding: 12px; }
+      .toolbar { width: 100%; }
+      select, button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Forensics KG Dashboard</h1>
+    <div class="toolbar">
+      <select id="caseSelect" aria-label="Case"></select>
+      <button id="caseGraphBtn">Case Graph</button>
+      <button id="allGraphBtn">All Graph</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="metrics"></section>
+
+    <section class="layout">
+      <div class="panel">
+        <h2 id="graphTitle">Case Graph</h2>
+        <div id="graph"></div>
+      </div>
+      <div class="panel">
+        <h2>Case Timeline</h2>
+        <div class="timeline" id="timeline"></div>
+      </div>
+    </section>
+
+    <section class="tables">
+      <div class="panel">
+        <h2>บัญชีม้า / ปลายทาง</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>เลขบัญชี</th>
+                <th>ชื่อบัญชี</th>
+                <th>ธนาคาร</th>
+                <th>จำนวนคดี</th>
+                <th>ยอดรวม</th>
+              </tr>
+            </thead>
+            <tbody id="muleRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Case Ranking</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Case</th>
+                <th>Damage</th>
+                <th>Score</th>
+                <th>Events</th>
+                <th>Assertions</th>
+              </tr>
+            </thead>
+            <tbody id="caseRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Psychological Tactics</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tactic</th>
+              <th>จำนวนคดี</th>
+            </tr>
+          </thead>
+          <tbody id="tacticRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const graphEl = document.getElementById("graph");
+    const caseSelect = document.getElementById("caseSelect");
+    const metricsEl = document.getElementById("metrics");
+    const timelineEl = document.getElementById("timeline");
+    const graphTitle = document.getElementById("graphTitle");
+    let network;
+    let cases = [];
+
+    const groups = {
+      Case: { color: { background: "#1f6feb", border: "#124a9c" }, font: { color: "#fff" }, shape: "box" },
+      Victim: { color: "#f97316", shape: "ellipse" },
+      Event: { color: "#10b981", shape: "box" },
+      BankAccount: { color: "#ef4444", font: { color: "#fff" }, shape: "box" },
+      Person: { color: "#f59e0b", shape: "ellipse" },
+      Assertion: { color: "#8b5cf6", font: { color: "#fff" }, shape: "diamond" },
+      Bank: { color: "#64748b", font: { color: "#fff" }, shape: "box" },
+      PsychologicalTactic: { color: "#06b6d4", shape: "box" },
+      ContactChannel: { color: "#84cc16", shape: "box" },
+      ScamType: { color: "#0f766e", font: { color: "#fff" }, shape: "box" },
+      HookPoint: { color: "#a855f7", font: { color: "#fff" }, shape: "box" },
+      EvidenceEntity: { color: "#94a3b8", shape: "ellipse" }
+    };
+
+    async function api(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function money(value) {
+      if (value === null || value === undefined) return "-";
+      return Number(value).toLocaleString("th-TH", { maximumFractionDigits: 2 });
+    }
+
+    function text(value) {
+      if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+      return value || "-";
+    }
+
+    function renderMetrics(summary) {
+      const items = [
+        ["Cases", summary.cases],
+        ["Events", summary.events],
+        ["Assertions", summary.assertions],
+        ["Damage", money(summary.total_damage)],
+        ["Nodes", summary.nodes],
+        ["Relationships", summary.relationships],
+        ["Bank Accounts", summary.bank_accounts]
+      ];
+      metricsEl.innerHTML = items.map(([label, value]) => `
+        <div class="metric">
+          <div class="label">${label}</div>
+          <div class="value">${value ?? 0}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderCases(rows) {
+      cases = rows;
+      caseSelect.innerHTML = rows.map(row => `
+        <option value="${row.case_id}">${row.case_id.slice(0, 8)} · ${money(row.damage_amount)} บาท</option>
+      `).join("");
+      document.getElementById("caseRows").innerHTML = rows.map(row => `
+        <tr>
+          <td><button class="case-link" data-case="${row.case_id}">${row.case_id.slice(0, 8)}</button></td>
+          <td class="money">${money(row.damage_amount)}</td>
+          <td><span class="pill">${row.confidence_total ?? "-"} ${row.confidence_grade ?? ""}</span></td>
+          <td>${row.event_count}</td>
+          <td>${row.assertion_count}</td>
+        </tr>
+      `).join("");
+      document.querySelectorAll(".case-link").forEach(btn => {
+        btn.addEventListener("click", () => {
+          caseSelect.value = btn.dataset.case;
+          loadCase(btn.dataset.case);
+        });
+      });
+    }
+
+    function renderMules(rows) {
+      document.getElementById("muleRows").innerHTML = rows.map(row => `
+        <tr>
+          <td class="nowrap">${row.account_number || "-"}</td>
+          <td>${text(row.owner_names)}</td>
+          <td>${text(row.banks)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_amount)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderTactics(rows) {
+      document.getElementById("tacticRows").innerHTML = rows.map(row => `
+        <tr>
+          <td>${row.tactic || "-"}</td>
+          <td>${row.case_count}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderTimeline(rows) {
+      timelineEl.innerHTML = rows.map(row => {
+        const cls = String(row.event_type || "").toLowerCase();
+        const amount = row.amount ? `<span class="money">${money(row.amount)} บาท</span>` : "";
+        const account = row.destination_account ? `<span class="muted">→ ${row.destination_account}</span>` : "";
+        return `
+          <div class="event ${cls}">
+            <div class="dot">${row.event_order}</div>
+            <div>
+              <div class="event-title">
+                <span>${row.event_type || "EVENT"} ${row.event_time ? "· " + row.event_time : ""}</span>
+                <span>${amount} ${account}</span>
+              </div>
+              <div class="event-body">${row.description || "-"}</div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<div class="muted">No timeline events</div>`;
+    }
+
+    function renderGraph(data) {
+      const nodes = new vis.DataSet(data.nodes || []);
+      const edges = new vis.DataSet(data.edges || []);
+      if (network) network.destroy();
+      network = new vis.Network(graphEl, { nodes, edges }, {
+        groups,
+        autoResize: true,
+        layout: { improvedLayout: true },
+        physics: {
+          enabled: true,
+          stabilization: { iterations: 150 },
+          barnesHut: { gravitationalConstant: -14000, springLength: 140, springConstant: 0.04 }
+        },
+        interaction: { hover: true, tooltipDelay: 120, navigationButtons: true },
+        edges: { font: { size: 9, align: "middle" }, color: { color: "#94a3b8" }, smooth: { type: "dynamic" } },
+        nodes: { font: { size: 12, multi: true }, borderWidth: 1, margin: 8 }
+      });
+    }
+
+    async function loadCase(caseId) {
+      graphTitle.textContent = `Case Graph · ${caseId.slice(0, 8)}`;
+      const [timeline, graph] = await Promise.all([
+        api(`/api/case/${caseId}/timeline`),
+        api(`/api/case/${caseId}/graph`)
+      ]);
+      renderTimeline(timeline);
+      renderGraph(graph);
+    }
+
+    async function loadAllGraph() {
+      graphTitle.textContent = "All Graph";
+      const graph = await api("/api/graph/all?limit=500");
+      renderGraph(graph);
+    }
+
+    async function init() {
+      const [summary, caseRows, mules, tactics] = await Promise.all([
+        api("/api/summary"),
+        api("/api/cases"),
+        api("/api/mule-accounts"),
+        api("/api/tactics")
+      ]);
+      renderMetrics(summary);
+      renderCases(caseRows);
+      renderMules(mules);
+      renderTactics(tactics);
+      if (caseRows.length) {
+        caseSelect.value = caseRows[0].case_id;
+        await loadCase(caseRows[0].case_id);
+      }
+    }
+
+    document.getElementById("caseGraphBtn").addEventListener("click", () => loadCase(caseSelect.value));
+    document.getElementById("allGraphBtn").addEventListener("click", loadAllGraph);
+    caseSelect.addEventListener("change", () => loadCase(caseSelect.value));
+
+    init().catch(err => {
+      metricsEl.innerHTML = `<div class="metric"><div class="label">Error</div><div class="value" style="font-size:16px;color:#b42318">${err.message}</div></div>`;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
