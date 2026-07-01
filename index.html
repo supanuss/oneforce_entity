@@ -61,6 +61,16 @@
       flex-wrap: wrap;
     }
 
+    .modebar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      flex-wrap: wrap;
+    }
+
     select, button, input {
       border: 1px solid var(--line);
       background: #fff;
@@ -77,6 +87,18 @@
       background: var(--blue);
       border-color: var(--blue);
       font-weight: 600;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: #fff;
+      border-color: var(--line);
+    }
+
+    button.secondary.active {
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
     }
 
     .grid {
@@ -126,6 +148,31 @@
       font-size: 15px;
       border-bottom: 1px solid var(--line);
       background: #fbfcfe;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: #fbfcfe;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
     }
 
     #graph {
@@ -252,8 +299,7 @@
     <h1>Forensics KG Dashboard</h1>
     <div class="toolbar">
       <select id="caseSelect" aria-label="Case"></select>
-      <button id="caseGraphBtn">Case Graph</button>
-      <button id="allGraphBtn">All Graph</button>
+      <button id="refreshBtn">Open Case</button>
     </div>
   </header>
 
@@ -263,6 +309,19 @@
     <section class="layout">
       <div class="panel">
         <h2 id="graphTitle">Case Graph</h2>
+        <div class="modebar">
+          <button class="secondary active" data-mode="story">Story</button>
+          <button class="secondary" data-mode="money">Money Flow</button>
+          <button class="secondary" data-mode="analyst">Analyst KG</button>
+          <button class="secondary" data-mode="all">All Graph</button>
+        </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:#1f6feb"></i>Case</span>
+          <span><i class="swatch" style="background:#10b981"></i>Event</span>
+          <span><i class="swatch" style="background:#ef4444"></i>Bank account</span>
+          <span><i class="swatch" style="background:#f59e0b"></i>Person</span>
+          <span><i class="swatch" style="background:#8b5cf6"></i>Assertion</span>
+        </div>
         <div id="graph"></div>
       </div>
       <div class="panel">
@@ -333,6 +392,7 @@
     const graphTitle = document.getElementById("graphTitle");
     let network;
     let cases = [];
+    let currentMode = "story";
 
     const groups = {
       Case: { color: { background: "#1f6feb", border: "#124a9c" }, font: { color: "#fff" }, shape: "box" },
@@ -446,39 +506,62 @@
       }).join("") || `<div class="muted">No timeline events</div>`;
     }
 
-    function renderGraph(data) {
+    function renderGraph(data, mode = "story") {
       const nodes = new vis.DataSet(data.nodes || []);
       const edges = new vis.DataSet(data.edges || []);
       if (network) network.destroy();
+      const hierarchical = mode === "story" || mode === "money";
       network = new vis.Network(graphEl, { nodes, edges }, {
         groups,
         autoResize: true,
-        layout: { improvedLayout: true },
+        layout: hierarchical
+          ? {
+              hierarchical: {
+                enabled: true,
+                direction: "LR",
+                sortMethod: "directed",
+                levelSeparation: mode === "story" ? 155 : 180,
+                nodeSpacing: 120,
+                treeSpacing: 160
+              }
+            }
+          : { improvedLayout: true },
         physics: {
-          enabled: true,
+          enabled: !hierarchical,
           stabilization: { iterations: 150 },
           barnesHut: { gravitationalConstant: -14000, springLength: 140, springConstant: 0.04 }
         },
         interaction: { hover: true, tooltipDelay: 120, navigationButtons: true },
-        edges: { font: { size: 9, align: "middle" }, color: { color: "#94a3b8" }, smooth: { type: "dynamic" } },
-        nodes: { font: { size: 12, multi: true }, borderWidth: 1, margin: 8 }
+        edges: {
+          font: { size: hierarchical ? 0 : 9, align: "middle" },
+          color: { color: "#94a3b8" },
+          smooth: hierarchical ? { type: "cubicBezier", forceDirection: "horizontal" } : { type: "dynamic" }
+        },
+        nodes: { font: { size: 12, multi: true }, borderWidth: 1, margin: 10, widthConstraint: { maximum: 170 } }
       });
     }
 
     async function loadCase(caseId) {
-      graphTitle.textContent = `Case Graph · ${caseId.slice(0, 8)}`;
+      const titleMap = {
+        story: "Story Graph",
+        money: "Money Flow",
+        analyst: "Analyst KG",
+        all: "All Graph"
+      };
+      graphTitle.textContent = `${titleMap[currentMode]} · ${caseId.slice(0, 8)}`;
+      const graphPath = currentMode === "story"
+        ? `/api/case/${caseId}/story-graph`
+        : currentMode === "money"
+          ? `/api/case/${caseId}/money-flow`
+          : currentMode === "analyst"
+            ? `/api/case/${caseId}/graph`
+            : `/api/graph/all?limit=500`;
       const [timeline, graph] = await Promise.all([
         api(`/api/case/${caseId}/timeline`),
-        api(`/api/case/${caseId}/graph`)
+        api(graphPath)
       ]);
       renderTimeline(timeline);
-      renderGraph(graph);
-    }
-
-    async function loadAllGraph() {
-      graphTitle.textContent = "All Graph";
-      const graph = await api("/api/graph/all?limit=500");
-      renderGraph(graph);
+      renderGraph(graph, currentMode);
     }
 
     async function init() {
@@ -498,8 +581,15 @@
       }
     }
 
-    document.getElementById("caseGraphBtn").addEventListener("click", () => loadCase(caseSelect.value));
-    document.getElementById("allGraphBtn").addEventListener("click", loadAllGraph);
+    document.getElementById("refreshBtn").addEventListener("click", () => loadCase(caseSelect.value));
+    document.querySelectorAll("[data-mode]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-mode]").forEach(item => item.classList.remove("active"));
+        btn.classList.add("active");
+        currentMode = btn.dataset.mode;
+        loadCase(caseSelect.value);
+      });
+    });
     caseSelect.addEventListener("change", () => loadCase(caseSelect.value));
 
     init().catch(err => {

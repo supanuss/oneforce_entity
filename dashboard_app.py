@@ -48,6 +48,50 @@ def run_query(query: str, **params) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=503, detail=f"Neo4j query failed: {exc}") from exc
 
 
+def add_paths_to_graph(session, query: str, graph_nodes: Dict[str, Dict[str, Any]], graph_edges: Dict[str, Dict[str, Any]], **params) -> None:
+    for record in session.run(query, **params):
+        path = record.get("p")
+        if path is None:
+            continue
+        for node in path.nodes:
+            node_id = node.element_id
+            if node_id not in graph_nodes:
+                props = to_plain(dict(node))
+                labels = list(node.labels)
+                label = labels[0] if labels else "Node"
+                graph_nodes[node_id] = {
+                    "id": node_id,
+                    "label": display_label(label, props),
+                    "group": label,
+                    "title": props,
+                    "level": graph_level(label, props),
+                }
+        for rel in path.relationships:
+            rel_id = rel.element_id
+            if rel_id not in graph_edges:
+                graph_edges[rel_id] = {
+                    "id": rel_id,
+                    "from": rel.start_node.element_id,
+                    "to": rel.end_node.element_id,
+                    "label": rel.type,
+                    "arrows": "to",
+                    "title": to_plain(dict(rel)),
+                }
+
+
+def build_curated_graph(case_id: str, queries: List[str]) -> Dict[str, List[Dict[str, Any]]]:
+    graph_nodes: Dict[str, Dict[str, Any]] = {}
+    graph_edges: Dict[str, Dict[str, Any]] = {}
+    driver = get_driver()
+    try:
+        with driver.session() as session:
+            for query in queries:
+                add_paths_to_graph(session, query, graph_nodes, graph_edges, case_id=case_id)
+    finally:
+        driver.close()
+    return {"nodes": list(graph_nodes.values()), "edges": list(graph_edges.values())}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     with open("index.html", "r", encoding="utf-8") as file:
@@ -223,6 +267,49 @@ def case_graph(case_id: str):
     return {"nodes": list(graph_nodes.values()), "edges": list(graph_edges.values())}
 
 
+@app.get("/api/case/{case_id}/story-graph")
+def case_story_graph(case_id: str):
+    return build_curated_graph(
+        case_id,
+        [
+            "MATCH p=(v:Victim)-[:REPORTED]->(c:Case {case_id: $case_id}) RETURN p",
+            "MATCH p=(c:Case {case_id: $case_id})-[:INVOLVES_SCAM_TYPE|STARTED_FROM|USED_TACTIC|CONTACTED_VIA]->(n) RETURN p",
+            "MATCH p=(c:Case {case_id: $case_id})-[:HAS_EVENT]->(e:Event) RETURN p",
+            """
+            MATCH (c:Case {case_id: $case_id})-[:HAS_EVENT]->(e1:Event)-[:NEXT_EVENT]->(e2:Event)<-[:HAS_EVENT]-(c)
+            MATCH p=(e1)-[:NEXT_EVENT]->(e2)
+            RETURN p
+            """,
+            """
+            MATCH (c:Case {case_id: $case_id})-[:HAS_EVENT]->(e:Event)-[:TRANSFER_TO]->(a:BankAccount)
+            MATCH p=(e)-[:TRANSFER_TO]->(a)
+            RETURN p
+            """,
+            """
+            MATCH (c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount)-[:OWNED_BY|REGISTERED_AT]->(n)
+            MATCH p=(a)-[:OWNED_BY|REGISTERED_AT]->(n)
+            RETURN p
+            """,
+        ],
+    )
+
+
+@app.get("/api/case/{case_id}/money-flow")
+def case_money_flow(case_id: str):
+    return build_curated_graph(
+        case_id,
+        [
+            "MATCH p=(v:Victim)-[:REPORTED]->(c:Case {case_id: $case_id}) RETURN p",
+            "MATCH p=(c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount) RETURN p",
+            """
+            MATCH (c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount)-[:OWNED_BY|REGISTERED_AT]->(n)
+            MATCH p=(a)-[:OWNED_BY|REGISTERED_AT]->(n)
+            RETURN p
+            """,
+        ],
+    )
+
+
 @app.get("/api/graph/all")
 def graph_all(limit: int = 500):
     driver = get_driver()
@@ -275,7 +362,7 @@ def graph_all(limit: int = 500):
 
 def display_label(label: str, props: Dict[str, Any]) -> str:
     if label == "Case":
-        return f"Case\\n{props.get('case_id', '')[:8]}"
+        return f"Case\\n{props.get('case_id', '')[:8]}\\n{format_money(props.get('damage_amount'))}"
     if label == "BankAccount":
         return f"BankAccount\\n{props.get('account_number', '')}"
     if label == "Person":
@@ -283,7 +370,8 @@ def display_label(label: str, props: Dict[str, Any]) -> str:
     if label == "Victim":
         return f"Victim\\n{props.get('name', '')}"
     if label == "Event":
-        return f"{props.get('event_order', '')}. {props.get('event_type', 'Event')}"
+        amount = format_money(props.get("amount")) if props.get("amount") else ""
+        return f"{props.get('event_order', '')}. {props.get('event_type', 'Event')}\\n{amount}"
     if label == "Assertion":
         return f"Assertion\\n{props.get('predicate', '')}"
     if label == "PsychologicalTactic":
@@ -291,3 +379,30 @@ def display_label(label: str, props: Dict[str, Any]) -> str:
     if label == "ContactChannel":
         return f"Contact\\n{props.get('platform') or props.get('normalized', '')}"
     return f"{label}\\n{props.get('name') or props.get('description') or props.get('key') or ''}"
+
+
+def format_money(value: Any) -> str:
+    try:
+        if value is None:
+            return ""
+        return f"{float(value):,.0f} บาท"
+    except (TypeError, ValueError):
+        return ""
+
+
+def graph_level(label: str, props: Dict[str, Any]) -> int:
+    if label == "Victim":
+        return 0
+    if label == "Case":
+        return 1
+    if label in ["ScamType", "HookPoint", "PsychologicalTactic", "ContactChannel"]:
+        return 2
+    if label == "Event":
+        return 3 + int(props.get("event_order") or 0)
+    if label == "BankAccount":
+        return 20
+    if label in ["Person", "Bank"]:
+        return 21
+    if label == "Assertion":
+        return 30
+    return 25
