@@ -1,0 +1,10 @@
+langgraph
+langchain
+langchain-google-genai
+pydantic
+networkx
+matplotlib
+python-dotenv
+neo4j
+langchain-openai
+langchain-ollama

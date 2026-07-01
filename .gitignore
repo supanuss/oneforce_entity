@@ -1,0 +1,22 @@
+.env
+.env.*
+.env copy
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+*.sqlite
+*.db
+*.tmp
+.DS_Store
+
+# Runtime/generated extraction outputs
+extracted_*.json
+run_debug.log
+debug.log
+diagnostics.txt
+
+# Local case data
+latest_case_recordings.json
+cases_summary.md

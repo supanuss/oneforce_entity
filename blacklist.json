@@ -1,0 +1,111 @@
+{
+  "bank_accounts": [
+    {
+      "bank_name": "กสิกรไทย",
+      "account_number": "1808240226",
+      "owner_name": "คมทิพัทธ์ ชูตระกูล",
+      "linked_cases": [
+        "6a425f9215ef8008ed48381e"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "ไทยพาณิชย์",
+      "account_number": "2752233951",
+      "owner_name": "สมถวิล สิงห์หกุล",
+      "linked_cases": [
+        "6a425f9215ef8008ed48381e"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "กรุงไทย",
+      "account_number": "8510933960",
+      "owner_name": "ลินปวี ธนเทพวีรมนต์",
+      "linked_cases": [
+        "6a425f9215ef8008ed48381e"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "ธนาคารไทยพาณิชย์",
+      "account_number": "01203456789",
+      "owner_name": "สมชาย สมถาวร",
+      "linked_cases": [
+        "6a40f477f0283ad153168bff"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "ธนาคารกสิกรไทย",
+      "account_number": "1234567890",
+      "owner_name": "น้ำฝน กุลธัญญะ",
+      "linked_cases": [
+        "6a40f477f0283ad153168bff"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "ธนาคารซีไอเอ็มบี",
+      "account_number": "9876543210",
+      "owner_name": "ปวีณา พิมพ์ทอง",
+      "linked_cases": [
+        "6a40f477f0283ad153168bff"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "กสิกรไทย",
+      "account_number": "0511633419",
+      "owner_name": "สุภาพร พรหมทอง",
+      "linked_cases": [
+        "6a42a62d1a21d08b90ffa645"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "TikTok Shop Seller",
+      "account_number": "010555609115221",
+      "owner_name": "บริษัท โอุมิเซะ จำกัด",
+      "linked_cases": [
+        "6a42a62d1a21d08b90ffa645"
+      ],
+      "associated_scammers": []
+    },
+    {
+      "bank_name": "ธนาคารออมสิน",
+      "account_number": "020483982425",
+      "owner_name": "นายน้ำฟุ แสงอีมิ้ง",
+      "linked_cases": [
+        "6a424efecab49bc1820722d7"
+      ],
+      "associated_scammers": [
+        "GG"
+      ]
+    }
+  ],
+  "social_accounts": [
+    {
+      "platform": "X",
+      "url_or_id": "@bauin",
+      "account_name": "@bauin",
+      "linked_cases": [
+        "6a3fdb349e21aa3dcd5e3698"
+      ]
+    }
+  ],
+  "phone_numbers": [
+    "ไม่มีข้อมูลเบอร์โทร"
+  ],
+  "scammer_profiles": [
+    {
+      "name": "GG",
+      "linked_cases": [
+        "6a424efecab49bc1820722d7"
+      ],
+      "associated_banks": [
+        "ธนาคารออมสิน - 020483982425"
+      ]
+    }
+  ]
+}
