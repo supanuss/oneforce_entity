@@ -33,6 +33,16 @@ Guardrail
 Scoring
         |
         v
+KGPlan
+        |
+        v
+KGCritic
+   |    |
+   |    +-- failed -> KGRepair -> KGCritic
+   |                 |
+   |                 +-- still failed -> KGSkip
+   |
+   v passed
 KGAgent
         |
         v
@@ -175,9 +185,46 @@ RelationAgent ถูกสั่งให้:
 }
 ```
 
-### 5. KGAgent
+### 5. KGPlan, KGCritic, KGRepair
 
-`KGAgent` ต่ออยู่ใน LangGraph workflow หลัง `Scoring` และก่อน `Save`
+KG reflex loop ทำงานหลัง `Scoring` และก่อนเขียน Neo4j จริง
+
+```text
+KGPlan -> KGCritic -> KGRepair -> KGCritic -> KGAgent
+```
+
+`KGPlan` สร้างแผนเขียน graph จาก state ปัจจุบัน ไม่อ่านไฟล์ JSON แยก
+
+`KGCritic` ตรวจเฉพาะ KG plan:
+
+- predicate ต้องอยู่ใน whitelist
+- relation direction ต้องถูก เช่น `BankAccount -> OWNED_BY -> Person`
+- `TRANSFERRED_TO` ต้องเป็น `Victim -> BankAccount`
+- `USED_TACTIC` ต้องเป็น `Victim -> PsychologicalTactic`
+- transfer timeline ต้องสอดคล้องกับ `damage_amount`
+- assertion ต้องมี subject/object ที่ resolve ได้ หรือถูกเก็บเป็น `EvidenceEntity`
+
+`KGRepair` แก้เฉพาะ `kg_plan` ไม่ย้อนกลับไปสั่ง LLM extract ใหม่ทั้งเคส
+
+ตัวอย่าง repair:
+
+- `Person -> OWNED_BY -> Bank` ถูก remap เป็น `BankAccount -> OWNED_BY -> Person` เมื่อ match จาก `bank_accounts.owner_name`
+- `Victim -> TRANSFERRED_TO -> Person` ถูก remap เป็น `Victim -> TRANSFERRED_TO -> BankAccount` เมื่อ person เป็น owner ของบัญชีปลายทาง
+- `ScamType -> USED_TACTIC -> Tactic` ถูก remap เป็น `Victim -> USED_TACTIC -> Tactic`
+- assertion ที่ยังทำให้ KG ผิดหลัง repair จะถูก drop หรือทำให้ `KGSkip` ไม่ commit เคสนั้น
+
+ถ้า repair แล้วยังไม่ผ่านภายใน `KG_MAX_REPAIR_ATTEMPTS` ระบบจะไม่เขียน Neo4j สำหรับเคสนั้น และ mark:
+
+```json
+{
+  "kg_status": "plan_failed",
+  "kg_critic_issues": []
+}
+```
+
+### 6. KGAgent
+
+`KGAgent` ต่ออยู่หลัง `KGCritic` ผ่านแล้ว และก่อน `Save`
 
 KGAgent ไม่อ่าน `extracted_v3.json` แต่รับจาก state โดยตรง:
 
@@ -364,7 +411,7 @@ threat_intel.sqlite
 
 ## Forensics-Friendly KG
 
-KG ที่เขียนโดย `KGAgent` แบ่งเป็น 3 layer:
+KG ที่เขียนโดย `KGAgent` แบ่งเป็น 3 layer และ commit เฉพาะ plan ที่ `KGCritic` ผ่านแล้ว:
 
 ### 1. Case Narrative Layer
 
@@ -432,6 +479,7 @@ relations หลัก:
 - `manual_review`: 0
 - `timeline` events ถูกสร้างครบ 10 เคส
 - `kg_status`: `disabled` ใน verification run เพราะทดสอบโดยตั้ง `KG_ENABLED=false`
+- `kg_plan`: ผ่าน KGCritic ครบ 10 เคส หลัง KGRepair
 - `threat_intel.sqlite`: สร้างสำเร็จ
 - `account_cases`: 26 rows
 - `contact_cases`: 3 rows
@@ -458,6 +506,7 @@ MAX_RETRY_LIMIT=3
 KG_ENABLED=true
 NEO4J_TIMEOUT=5
 NEO4J_MAX_RETRY_TIME=3
+KG_MAX_REPAIR_ATTEMPTS=2
 ```
 
 ค่าที่สำคัญที่สุด:
@@ -481,10 +530,13 @@ LLM_REASONING=false
 6. TimelineAgent builds narrative + transfer/refund timeline
 7. Guardrail checks victim contamination, relation shape, and timeline consistency
 8. Scoring attaches confidence_score
-9. KGAgent writes Neo4j if enabled
-10. Save result
-11. If invalid, route to the failed agent only
-12. If retry limit is exceeded, save as manual_review
+9. KGPlan builds a commit plan
+10. KGCritic validates the KG plan
+11. KGRepair fixes only KG plan issues when possible
+12. KGAgent writes Neo4j if enabled and the plan passed
+13. Save result
+14. If extraction/timeline is invalid, route to the failed agent only
+15. If retry limit is exceeded, save as manual_review
 ```
 
 ## Targeted Reflection

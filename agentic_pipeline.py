@@ -133,6 +133,9 @@ class AgentState(TypedDict):
     relation_attempts: int
     timeline_attempts: int
     error_history: List[Dict[str, Any]]
+    kg_plan: Optional[Dict[str, Any]]
+    kg_critic_issues: List[Dict[str, Any]]
+    kg_repair_attempts: int
     kg_status: str
     kg_errors: List[Dict[str, Any]]
     review_status: str                         # in_progress, passed, manual_review
@@ -1310,6 +1313,26 @@ def scoring_node(state: AgentState) -> AgentState:
 def kg_enabled() -> bool:
     return os.getenv("KG_ENABLED", "true").lower() in ["1", "true", "yes", "on"]
 
+ALLOWED_KG_PREDICATES = {
+    "CONTACTED_VIA",
+    "LURED_BY",
+    "TRANSFERRED_TO",
+    "OWNED_BY",
+    "REGISTERED_AT",
+    "USED_TACTIC",
+    "VICTIM_OF",
+}
+
+KG_DIRECTION_RULES = {
+    "OWNED_BY": ("BankAccount", {"Person", "EvidenceEntity"}),
+    "REGISTERED_AT": ("BankAccount", {"Bank", "EvidenceEntity"}),
+    "TRANSFERRED_TO": ("Victim", {"BankAccount", "EvidenceEntity"}),
+    "CONTACTED_VIA": ("Victim", {"ContactChannel", "EvidenceEntity"}),
+    "LURED_BY": ("Victim", {"HookPoint", "EvidenceEntity"}),
+    "USED_TACTIC": ("Victim", {"PsychologicalTactic", "EvidenceEntity"}),
+    "VICTIM_OF": ("Victim", {"ScamType", "EvidenceEntity"}),
+}
+
 def node_key(label: str, value: Any) -> str:
     cleaned = re.sub(r"\s+", " ", str(value or "").strip())
     return f"{label}:{cleaned}"
@@ -1362,6 +1385,223 @@ def resolve_relation_entity(raw: str, entity_index: Dict[str, Dict[str, str]], c
         if key and (key in lowered or lowered in key):
             return resolved
     return {"label": "EvidenceEntity", "key": node_key("EvidenceEntity", f"{case_id}:{text}"), "name": text}
+
+def build_kg_plan(case: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[str, Any]:
+    case_id = extracted.get("case_id") or case.get("case_id")
+    scammer_dimensions = extracted.get("scammer_dimensions", {})
+    entity_index = build_entity_index(extracted)
+    assertions = []
+    for idx, rel in enumerate(scammer_dimensions.get("relations", []), 1):
+        predicate = str(rel.get("predicate") or "").strip().upper()
+        subject = resolve_relation_entity(rel.get("subject"), entity_index, case_id)
+        obj = resolve_relation_entity(rel.get("object"), entity_index, case_id)
+        assertions.append({
+            "assertion_id": f"{case_id}-assertion-{idx:03d}",
+            "predicate": predicate,
+            "raw_subject": rel.get("subject"),
+            "raw_object": rel.get("object"),
+            "subject": subject,
+            "object": obj,
+            "evidence": rel.get("evidence"),
+            "source_agent": "RelationAgent",
+            "case_id": case_id,
+        })
+
+    transfer_events = [
+        event for event in scammer_dimensions.get("timeline", {}).get("events", [])
+        if event.get("event_type") == "TRANSFER"
+    ]
+    return {
+        "case_id": case_id,
+        "version": "kg_plan_v1",
+        "assertions": assertions,
+        "summary": {
+            "assertion_count": len(assertions),
+            "event_count": len(scammer_dimensions.get("timeline", {}).get("events", [])),
+            "transfer_event_count": len(transfer_events),
+            "damage_amount": scammer_dimensions.get("damage_amount"),
+        },
+        "critic_status": "pending",
+        "repair_history": [],
+    }
+
+def critique_kg_plan(extracted: Dict[str, Any], kg_plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+    issues = []
+    scammer_dimensions = extracted.get("scammer_dimensions", {})
+    case_id = extracted.get("case_id")
+    if not extracted.get("accuser_original"):
+        issues.append({"severity": "error", "code": "missing_victim", "message": "Case has no accuser_original/Victim"})
+
+    transfer_events = [
+        event for event in scammer_dimensions.get("timeline", {}).get("events", [])
+        if event.get("event_type") == "TRANSFER"
+    ]
+    if transfer_events:
+        transfer_total = round(sum(float(event.get("amount") or 0.0) for event in transfer_events), 2)
+        damage_amount = scammer_dimensions.get("damage_amount")
+        if damage_amount is not None and abs(transfer_total - float(damage_amount)) > 0.01:
+            issues.append({
+                "severity": "error",
+                "code": "timeline_amount_mismatch",
+                "message": f"Transfer total {transfer_total} != damage_amount {damage_amount}",
+            })
+        known_accounts = {
+            normalize_account_number(account.get("account_number"))
+            for account in scammer_dimensions.get("bank_accounts", [])
+            if normalize_account_number(account.get("account_number"))
+        }
+        for event in transfer_events:
+            destination = normalize_account_number(event.get("destination_account"))
+            if destination and destination not in known_accounts:
+                issues.append({
+                    "severity": "error",
+                    "code": "unknown_transfer_account",
+                    "message": f"TransferEvent destination_account {destination} is not in bank_accounts",
+                    "event_id": event.get("event_id"),
+                })
+
+    seen_orders = set()
+    for event in scammer_dimensions.get("timeline", {}).get("events", []):
+        order = event.get("event_order")
+        if order in seen_orders:
+            issues.append({"severity": "error", "code": "duplicate_event_order", "message": f"Duplicate event_order {order}"})
+        seen_orders.add(order)
+
+    for assertion in kg_plan.get("assertions", []):
+        predicate = assertion.get("predicate")
+        if predicate not in ALLOWED_KG_PREDICATES:
+            issues.append({
+                "severity": "repairable",
+                "code": "invalid_predicate",
+                "message": f"Predicate {predicate} is not allowed",
+                "assertion_id": assertion.get("assertion_id"),
+            })
+        if not assertion.get("subject", {}).get("key") or not assertion.get("object", {}).get("key"):
+            issues.append({
+                "severity": "repairable",
+                "code": "missing_assertion_endpoint",
+                "message": "Assertion subject/object is missing",
+                "assertion_id": assertion.get("assertion_id"),
+            })
+        if not assertion.get("evidence"):
+            issues.append({
+                "severity": "warning",
+                "code": "missing_evidence",
+                "message": "Assertion has no evidence",
+                "assertion_id": assertion.get("assertion_id"),
+            })
+        expected = KG_DIRECTION_RULES.get(predicate)
+        if expected:
+            expected_subject, expected_objects = expected
+            subject_label = assertion.get("subject", {}).get("label")
+            object_label = assertion.get("object", {}).get("label")
+            reversed_match = object_label == expected_subject and subject_label in expected_objects
+            if subject_label != expected_subject or object_label not in expected_objects:
+                issues.append({
+                    "severity": "repairable",
+                    "code": "predicate_direction_mismatch",
+                    "message": f"{predicate} expected {expected_subject}->{sorted(expected_objects)}, got {subject_label}->{object_label}",
+                    "assertion_id": assertion.get("assertion_id"),
+                    "repair_hint": "swap_subject_object" if reversed_match else "review_semantic_mapping",
+                })
+
+    if not kg_plan.get("assertions"):
+        issues.append({
+            "severity": "warning",
+            "code": "no_llm_assertions",
+            "message": f"Case {case_id} has no LLM assertion overlay",
+        })
+    return issues
+
+def repair_kg_plan_deterministically(kg_plan: Dict[str, Any], issues: List[Dict[str, Any]], extracted: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    repaired = json.loads(json.dumps(kg_plan, ensure_ascii=False))
+    extracted = extracted or {}
+    scammer_dimensions = extracted.get("scammer_dimensions", {})
+    victim_name = extracted.get("accuser_original")
+    victim_entity = {"label": "Victim", "key": node_key("Victim", victim_name), "name": victim_name} if victim_name else None
+    scam_type = scammer_dimensions.get("attack_type")
+    scam_type_entity = {"label": "ScamType", "key": node_key("ScamType", scam_type), "name": scam_type} if scam_type else None
+    hook_point = scammer_dimensions.get("hook_point")
+    hook_point_entity = {"label": "HookPoint", "key": node_key("HookPoint", hook_point), "name": hook_point} if hook_point else None
+    accounts_by_owner = {}
+    for account in scammer_dimensions.get("bank_accounts", []):
+        owner = str(account.get("owner_name") or "").strip().lower()
+        account_number = normalize_account_number(account.get("account_number"))
+        if owner and account_number:
+            accounts_by_owner[owner] = {
+                "label": "BankAccount",
+                "key": node_key("BankAccount", account_number),
+                "name": account_number,
+            }
+    issue_by_assertion: Dict[str, List[Dict[str, Any]]] = {}
+    for issue in issues:
+        assertion_id = issue.get("assertion_id")
+        if assertion_id:
+            issue_by_assertion.setdefault(assertion_id, []).append(issue)
+
+    repaired_assertions = []
+    for assertion in repaired.get("assertions", []):
+        assertion_issues = issue_by_assertion.get(assertion.get("assertion_id"), [])
+        drop = False
+        for issue in assertion_issues:
+            if issue.get("code") == "invalid_predicate":
+                drop = True
+            if issue.get("code") == "predicate_direction_mismatch" and issue.get("repair_hint") == "swap_subject_object":
+                assertion["subject"], assertion["object"] = assertion["object"], assertion["subject"]
+                assertion["repair_action"] = "swapped_subject_object"
+            elif issue.get("code") == "predicate_direction_mismatch":
+                predicate = assertion.get("predicate")
+                subject = assertion.get("subject", {})
+                obj = assertion.get("object", {})
+                if predicate == "OWNED_BY" and subject.get("label") == "Person":
+                    account_entity = accounts_by_owner.get(str(subject.get("name") or "").strip().lower())
+                    if account_entity:
+                        assertion["subject"] = account_entity
+                        assertion["object"] = subject
+                        assertion["repair_action"] = "mapped_owner_person_to_bank_account"
+                    else:
+                        drop = True
+                elif predicate == "OWNED_BY" and subject.get("label") != "BankAccount":
+                    drop = True
+                elif predicate == "TRANSFERRED_TO" and obj.get("label") == "Person":
+                    account_entity = accounts_by_owner.get(str(obj.get("name") or "").strip().lower())
+                    if account_entity:
+                        assertion["object"] = account_entity
+                        assertion["repair_action"] = "mapped_owner_person_to_bank_account"
+                    else:
+                        drop = True
+                elif predicate == "TRANSFERRED_TO" and obj.get("label") == "BankAccount" and victim_entity:
+                    assertion["subject"] = victim_entity
+                    assertion["repair_action"] = "remapped_subject_to_victim"
+                elif predicate == "VICTIM_OF" and victim_entity and scam_type_entity:
+                    assertion["subject"] = victim_entity
+                    assertion["object"] = scam_type_entity
+                    assertion["repair_action"] = "remapped_victim_of_to_scam_type"
+                elif predicate == "LURED_BY" and victim_entity and hook_point_entity:
+                    assertion["subject"] = victim_entity
+                    assertion["object"] = hook_point_entity
+                    assertion["repair_action"] = "remapped_lured_by_to_hook_point"
+                elif predicate in ["USED_TACTIC", "VICTIM_OF", "CONTACTED_VIA", "LURED_BY"] and victim_entity:
+                    assertion["subject"] = victim_entity
+                    assertion["repair_action"] = "remapped_subject_to_victim"
+                elif predicate == "REGISTERED_AT" and subject.get("label") != "BankAccount":
+                    drop = True
+                else:
+                    drop = True
+        if not drop:
+            repaired_assertions.append(assertion)
+
+    repaired["assertions"] = repaired_assertions
+    repaired["summary"]["assertion_count"] = len(repaired_assertions)
+    history = repaired.get("repair_history", [])
+    history.append({
+        "method": "deterministic_kg_repair",
+        "input_issue_count": len(issues),
+        "output_assertion_count": len(repaired_assertions),
+    })
+    repaired["repair_history"] = history
+    repaired["critic_status"] = "repaired"
+    return repaired
 
 def run_merge_node(tx, label: str, key: str, props: Dict[str, Any]) -> None:
     safe_label = re.sub(r"[^A-Za-z0-9_]", "", label)
@@ -1498,19 +1738,21 @@ def kg_write_case(tx, case: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[s
             tx.run("MATCH (e:Event {key: $event_key}), (a:BankAccount {key: $account_key}) MERGE (e)-[:TRANSFER_TO]->(a)", event_key=event_key, account_key=account_key)
             counts["edges"] += 1
 
-    entity_index = build_entity_index(extracted)
-    for idx, rel in enumerate(scammer_dimensions.get("relations", []), 1):
-        subject = resolve_relation_entity(rel.get("subject"), entity_index, case_id)
-        obj = resolve_relation_entity(rel.get("object"), entity_index, case_id)
+    kg_plan = extracted.get("kg_plan") or build_kg_plan(case, extracted)
+    for idx, assertion in enumerate(kg_plan.get("assertions", []), 1):
+        subject = assertion.get("subject", {})
+        obj = assertion.get("object", {})
         run_merge_node(tx, subject["label"], subject["key"], {"key": subject["key"], "name": subject.get("name")})
         run_merge_node(tx, obj["label"], obj["key"], {"key": obj["key"], "name": obj.get("name")})
-        assertion_key = node_key("Assertion", f"{case_id}:{idx}:{rel.get('predicate')}:{rel.get('subject')}:{rel.get('object')}")
+        assertion_key = node_key("Assertion", assertion.get("assertion_id") or f"{case_id}:assertion:{idx}")
         run_merge_node(tx, "Assertion", assertion_key, {
             "key": assertion_key,
-            "predicate": rel.get("predicate"),
-            "evidence": rel.get("evidence"),
-            "source_agent": "RelationAgent",
+            "assertion_id": assertion.get("assertion_id"),
+            "predicate": assertion.get("predicate"),
+            "evidence": assertion.get("evidence"),
+            "source_agent": assertion.get("source_agent", "RelationAgent"),
             "case_id": case_id,
+            "repair_action": assertion.get("repair_action"),
         })
         tx.run("""
             MATCH (c:Case {key: $case_key}), (a:Assertion {key: $assertion_key})
@@ -1528,6 +1770,110 @@ def kg_write_case(tx, case: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[s
         counts["assertions"] += 1
 
     return counts
+
+def kg_plan_node(state: AgentState) -> AgentState:
+    """Build a KG commit plan from extraction state before any Neo4j write."""
+    idx = state["current_index"]
+    case = state["cases"][idx]
+    extracted = state.get("temp_extraction")
+
+    print(f"[KGPlan] Planning KG for Case {idx+1}...")
+
+    if not extracted:
+        return {**state, "kg_plan": None, "kg_status": "plan_skipped", "status": "KG Plan Skipped"}
+
+    kg_plan = build_kg_plan(case, extracted)
+    extracted["kg_plan"] = kg_plan
+    return {
+        **state,
+        "temp_extraction": extracted,
+        "kg_plan": kg_plan,
+        "kg_critic_issues": [],
+        "kg_status": "planned",
+        "status": "KG Planned",
+    }
+
+def kg_critic_node(state: AgentState) -> AgentState:
+    """Critique KG plan before commit. Only errors/repairable issues block writes."""
+    extracted = state.get("temp_extraction")
+    kg_plan = state.get("kg_plan") or (extracted or {}).get("kg_plan")
+    idx = state["current_index"]
+
+    print(f"[KGCritic] Reviewing KG plan for Case {idx+1}...")
+
+    if not extracted or not kg_plan:
+        return {**state, "kg_status": "plan_missing", "status": "KG Plan Missing"}
+
+    issues = critique_kg_plan(extracted, kg_plan)
+    blocking = [issue for issue in issues if issue.get("severity") in ["error", "repairable"]]
+    kg_plan["critic_issues"] = issues
+    kg_plan["critic_status"] = "failed" if blocking else "passed"
+    extracted["kg_plan"] = kg_plan
+
+    if blocking:
+        print(f"   KGCritic found {len(blocking)} blocking issue(s).")
+        return {
+            **state,
+            "temp_extraction": extracted,
+            "kg_plan": kg_plan,
+            "kg_critic_issues": issues,
+            "kg_status": "critic_failed",
+            "status": "KG Critic Failed",
+        }
+
+    print(f"   KGCritic passed with {len(issues)} warning(s).")
+    return {
+        **state,
+        "temp_extraction": extracted,
+        "kg_plan": kg_plan,
+        "kg_critic_issues": issues,
+        "kg_status": "critic_passed",
+        "status": "KG Critic Passed",
+    }
+
+def kg_repair_node(state: AgentState) -> AgentState:
+    """Repair only the KG plan, not the upstream extraction."""
+    extracted = state.get("temp_extraction")
+    kg_plan = state.get("kg_plan") or (extracted or {}).get("kg_plan")
+    issues = state.get("kg_critic_issues", [])
+    attempts = int(state.get("kg_repair_attempts", 0)) + 1
+
+    print(f"[KGRepair] Repairing KG plan (Attempt {attempts})...")
+
+    if not extracted or not kg_plan:
+        return {**state, "kg_status": "repair_skipped", "kg_repair_attempts": attempts, "status": "KG Repair Skipped"}
+
+    repaired_plan = repair_kg_plan_deterministically(kg_plan, issues, extracted)
+    extracted["kg_plan"] = repaired_plan
+    return {
+        **state,
+        "temp_extraction": extracted,
+        "kg_plan": repaired_plan,
+        "kg_repair_attempts": attempts,
+        "kg_status": "repaired",
+        "status": "KG Repaired",
+    }
+
+def route_after_kg_critic(state: AgentState) -> str:
+    if state.get("kg_status") == "critic_passed":
+        return "commit"
+    if int(state.get("kg_repair_attempts", 0)) < int(os.getenv("KG_MAX_REPAIR_ATTEMPTS", "2")):
+        return "repair"
+    return "skip"
+
+def kg_skip_node(state: AgentState) -> AgentState:
+    extracted = state.get("temp_extraction")
+    issues = state.get("kg_critic_issues", [])
+    if extracted:
+        extracted["kg_status"] = "plan_failed"
+        extracted["kg_critic_issues"] = issues
+    print(f"[KGSkip] Skipping KG write after unresolved critic issues: {len(issues)}")
+    return {
+        **state,
+        "temp_extraction": extracted,
+        "kg_status": "plan_failed",
+        "status": "KG Plan Failed",
+    }
 
 def kg_agent_node(state: AgentState) -> AgentState:
     """Write forensics-friendly KG to Neo4j directly from workflow state."""
@@ -1610,6 +1956,9 @@ def save_node(state: AgentState) -> AgentState:
         "timeline_attempts": 0,
         "error_history": [],
         "review_status": "in_progress",
+        "kg_plan": None,
+        "kg_critic_issues": [],
+        "kg_repair_attempts": 0,
         "kg_status": "not_started",
         "temp_entities": None,
         "temp_profile": None,
@@ -1659,6 +2008,10 @@ def build_graph():
     workflow.add_node("TimelineAgent", timeline_agent_node)
     workflow.add_node("Guardrail", guardrail_node)
     workflow.add_node("Scoring", scoring_node)
+    workflow.add_node("KGPlan", kg_plan_node)
+    workflow.add_node("KGCritic", kg_critic_node)
+    workflow.add_node("KGRepair", kg_repair_node)
+    workflow.add_node("KGSkip", kg_skip_node)
     workflow.add_node("KGAgent", kg_agent_node)
     workflow.add_node("Save", save_node)
     
@@ -1693,7 +2046,19 @@ def build_graph():
             "save": "Scoring",
         }
     )
-    workflow.add_edge("Scoring", "KGAgent")
+    workflow.add_edge("Scoring", "KGPlan")
+    workflow.add_edge("KGPlan", "KGCritic")
+    workflow.add_conditional_edges(
+        "KGCritic",
+        route_after_kg_critic,
+        {
+            "commit": "KGAgent",
+            "repair": "KGRepair",
+            "skip": "KGSkip",
+        }
+    )
+    workflow.add_edge("KGRepair", "KGCritic")
+    workflow.add_edge("KGSkip", "Save")
     workflow.add_edge("KGAgent", "Save")
     
     workflow.add_conditional_edges(
@@ -1743,6 +2108,9 @@ if __name__ == "__main__":
             "relation_attempts": 0,
             "timeline_attempts": 0,
             "error_history": [],
+            "kg_plan": None,
+            "kg_critic_issues": [],
+            "kg_repair_attempts": 0,
             "kg_status": "not_started",
             "kg_errors": [],
             "review_status": "in_progress",
