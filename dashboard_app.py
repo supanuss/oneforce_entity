@@ -338,25 +338,24 @@ def case_money_flow(case_id: str):
                 RETURN elementId(a) AS account_id,
                        a.account_number AS account_number,
                        t.amount AS amount,
-                       collect(DISTINCT p.name) AS owners,
+                       collect(DISTINCT {id: elementId(p), name: p.name}) AS owners,
                        collect(DISTINCT b.name) AS banks
                 ORDER BY coalesce(t.amount, 0) DESC, a.account_number
                 """,
                 case_id=case_id,
             )
             for index, row in enumerate(account_rows, 1):
-                owners = [item for item in row["owners"] if item]
+                owners = [item for item in row["owners"] if item and item.get("id") and item.get("name")]
                 banks = [item for item in row["banks"] if item]
-                owner_text = ", ".join(owners) if owners else "ไม่ระบุชื่อบัญชี"
                 bank_text = ", ".join(banks) if banks else "ไม่ระบุธนาคาร"
                 nodes.append({
                     "id": row["account_id"],
-                    "label": f"{row['account_number']}\n{owner_text}\n{bank_text}",
+                    "label": f"{row['account_number']}\n{bank_text}",
                     "group": "BankAccount",
                     "level": 2 + index,
                     "title": {
                         "account_number": row["account_number"],
-                        "owner_names": owners,
+                        "owner_names": [owner["name"] for owner in owners],
                         "banks": banks,
                         "amount": row["amount"],
                     },
@@ -369,6 +368,21 @@ def case_money_flow(case_id: str):
                     "arrows": "to",
                     "title": {"amount": row["amount"]},
                 })
+                for owner_index, owner in enumerate(owners, 1):
+                    nodes.append({
+                        "id": owner["id"],
+                        "label": f"บัญชีม้า\n{owner['name']}",
+                        "group": "Person",
+                        "level": 8 + index + owner_index,
+                        "title": {"name": owner["name"], "role": "account_owner"},
+                    })
+                    edges.append({
+                        "id": f"{row['account_id']}:{owner['id']}",
+                        "from": row["account_id"],
+                        "to": owner["id"],
+                        "label": "OWNED_BY",
+                        "arrows": "to",
+                    })
             return {"nodes": nodes, "edges": edges}
     finally:
         driver.close()
