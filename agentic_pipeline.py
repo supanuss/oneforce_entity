@@ -2,11 +2,13 @@ import os
 import json
 import re
 import sqlite3
+from datetime import datetime, timezone
 from typing import List, Dict, Any, TypedDict, Optional
 from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
+from neo4j import GraphDatabase
 
 # Load env variables
 load_dotenv()
@@ -50,6 +52,7 @@ class ScammerDimensions(BaseModel):
     scammer_names: List[str] = Field(default_factory=list, description="รายชื่อมิจฉาชีพ/ผู้ต้องสงสัย (ต้องไม่ใช่ชื่อผู้เสียหาย)")
     bank_accounts: List[BankAccount] = Field(default_factory=list, description="บัญชีธนาคารปลายทาง (บัญชีม้า)")
     relations: List[ExtractionRelation] = Field(default_factory=list, description="relations ที่ LLM สกัดจากคดีสำหรับสร้าง KG")
+    timeline: Dict[str, Any] = Field(default_factory=dict, description="forensics timeline events for graph visualization")
 
 class CaseExtraction(BaseModel):
     victim_demographics: VictimDemographics = Field(..., description="ข้อมูลผู้เสียหาย")
@@ -89,6 +92,27 @@ class ProfileExtraction(BaseModel):
 class RelationExtraction(BaseModel):
     relations: List[ExtractionRelation] = Field(default_factory=list, description="relations ที่ใช้สร้าง KG")
 
+class NarrativeTimelineEvent(BaseModel):
+    event_type: str = Field(..., description="DISCOVERY, CONTACT, PERSUASION, REALIZATION, REPORT, or LEGAL_ACTION")
+    event_order_hint: Optional[int] = Field(None, description="ลำดับโดยประมาณ")
+    description: str = Field(..., description="คำอธิบายสั้นๆ")
+    related_tactic: Optional[str] = Field(None, description="tactic ที่เกี่ยวข้อง")
+    related_channel: Optional[str] = Field(None, description="channel ที่เกี่ยวข้อง")
+    evidence: Optional[str] = Field(None, description="หลักฐานสั้นๆ จากข้อความ")
+
+    @field_validator("event_type", "description", "related_tactic", "related_channel", "evidence", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, list):
+            parts = [str(item).strip() for item in value if item is not None and str(item).strip()]
+            return ", ".join(parts) if parts else None
+        return str(value).strip() if str(value).strip() else None
+
+class NarrativeTimelineExtraction(BaseModel):
+    narrative_events: List[NarrativeTimelineEvent] = Field(default_factory=list, description="เหตุการณ์ narrative ไม่เกิน 6 รายการ")
+
 # ==========================================
 # 2. LangGraph State Definition
 # ==========================================
@@ -100,13 +124,17 @@ class AgentState(TypedDict):
     temp_extraction: Optional[Dict[str, Any]]  # Temp holding for current attempt
     temp_entities: Optional[Dict[str, Any]]    # EntityAgent output for current attempt
     temp_profile: Optional[Dict[str, Any]]     # ProfileAgent output for current attempt
+    temp_timeline: Optional[Dict[str, Any]]    # TimelineAgent output for current attempt
     feedback: str                              # Guardrail feedback for retry
     attempts: int                              # Retry count
     retry_target: Optional[str]                # entity, profile, relation, or None
     entity_attempts: int
     profile_attempts: int
     relation_attempts: int
+    timeline_attempts: int
     error_history: List[Dict[str, Any]]
+    kg_status: str
+    kg_errors: List[Dict[str, Any]]
     review_status: str                         # in_progress, passed, manual_review
     status: str                                # Current log status
 
@@ -188,6 +216,8 @@ def attempt_key(source: Optional[str]) -> str:
         return "profile_attempts"
     if source == "relation":
         return "relation_attempts"
+    if source == "timeline":
+        return "timeline_attempts"
     return "entity_attempts"
 
 def register_retry_or_manual_review(state: AgentState, source: str, feedback: str) -> Dict[str, Any]:
@@ -214,6 +244,170 @@ def parse_money_amount(raw_amount: str) -> Optional[float]:
     except (AttributeError, ValueError):
         return None
 
+def clean_evidence(text: str, max_chars: int = 160) -> str:
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    return text[:max_chars]
+
+def normalize_event_type(event_type: Optional[str]) -> str:
+    value = str(event_type or "").strip().upper()
+    allowed = {"DISCOVERY", "CONTACT", "PERSUASION", "REALIZATION", "REPORT", "LEGAL_ACTION", "TRANSFER", "REFUND"}
+    return value if value in allowed else "PERSUASION"
+
+def extract_thai_event_time(line: str) -> Optional[str]:
+    date_match = re.search(r"เมื่อวันที่\s*(.+?)(?:\s*เวลา|\s*จำนวน|\s*$)", line)
+    time_match = re.search(r"เวลา\s*([0-9]{1,2}[:.][0-9]{2})\s*น?", line)
+    parts = []
+    if date_match:
+        parts.append(date_match.group(1).strip())
+    if time_match:
+        parts.append(time_match.group(1).replace(".", ":").strip())
+    return " ".join(parts) if parts else None
+
+def remove_transfer_and_refund_lines(case_text: str) -> str:
+    kept_lines = []
+    for line in case_text.splitlines():
+        if "ครั้งที่" in line and "จำนวน" in line and "บาท" in line:
+            continue
+        if "เงินคืน" in line or "ได้รับเงินคืน" in line or "คืนจำนวน" in line:
+            continue
+        kept_lines.append(line)
+    return "\n".join(kept_lines).strip()
+
+def parse_transfer_events(case_id: str, case_text: str) -> List[Dict[str, Any]]:
+    events = []
+    for line in case_text.splitlines():
+        if "เงินคืน" in line or "ได้รับเงินคืน" in line or "คืนจำนวน" in line:
+            continue
+        if "ครั้งที่" not in line or "จำนวน" not in line or "บาท" not in line:
+            continue
+        order_match = re.search(r"ครั้งที่\s*([0-9]+)", line)
+        amount_match = re.search(r"จำนวน\s*([0-9][0-9,]*(?:\.\d+)?)\s*บาท", line)
+        destination_account_match = re.search(r"ไปยังบัญชี.*?เลขที่(?:บัญชี|พร้อมเพย์)\s*([0-9][0-9\s-]*)", line)
+        destination_owner_match = re.search(r"ไปยังบัญชี.*?ชื่อบัญชี\s*(.+?)(?:\s*เมื่อวันที่|\s*จำนวน|\s*$)", line)
+        source_account_match = re.search(r"โอนจากบัญชี.*?เลขที่บัญชี\s*([0-9][0-9\s-]*)", line)
+        source_owner_match = re.search(r"โอนจากบัญชี.*?ชื่อบัญชี\s*(.+?)(?:\s*ไปยังบัญชี|\s*$)", line)
+        amount = parse_money_amount(amount_match.group(1)) if amount_match else None
+        destination_account = normalize_account_number(destination_account_match.group(1)) if destination_account_match else None
+        if amount is None or not destination_account:
+            continue
+        event_order = int(order_match.group(1)) if order_match else len(events) + 1
+        events.append({
+            "event_id": f"{case_id}-transfer-{event_order:03d}",
+            "event_order": event_order,
+            "event_type": "TRANSFER",
+            "event_time": extract_thai_event_time(line),
+            "description": f"โอนเงิน {amount:,.2f} บาท ไปยังบัญชี {destination_account}",
+            "amount": amount,
+            "source_account": normalize_account_number(source_account_match.group(1)) if source_account_match else None,
+            "source_owner": source_owner_match.group(1).strip() if source_owner_match else None,
+            "destination_account": destination_account,
+            "destination_owner": destination_owner_match.group(1).strip() if destination_owner_match else None,
+            "evidence": clean_evidence(line),
+            "source": "deterministic_transfer_parser",
+        })
+    return events
+
+def parse_refund_events(case_id: str, case_text: str, start_order: int) -> List[Dict[str, Any]]:
+    events = []
+    refund_lines = [line for line in case_text.splitlines() if "เงินคืน" in line or "ได้รับเงินคืน" in line or "คืนจำนวน" in line]
+    for line in refund_lines:
+        refund_matches = list(re.finditer(
+            r"ครั้งที่\s*([0-9]+)\s*จำนวน\s*([0-9][0-9,]*(?:\.\d+)?)\s*บาท.*?เมื่อวันที่\s*(.+?)\s*เวลา\s*([0-9]{1,2}[:.][0-9]{2})",
+            line,
+        ))
+        if refund_matches:
+            for match in refund_matches:
+                amount = parse_money_amount(match.group(2))
+                if amount is None:
+                    continue
+                idx = int(match.group(1))
+                order = start_order + len(events)
+                event_time = f"{match.group(3).strip()} {match.group(4).replace('.', ':').strip()}"
+                events.append({
+                    "event_id": f"{case_id}-refund-{idx:03d}",
+                    "event_order": order,
+                    "event_type": "REFUND",
+                    "event_time": event_time,
+                    "description": f"ได้รับเงินคืน {amount:,.2f} บาท",
+                    "amount": amount,
+                    "source_account": None,
+                    "destination_account": None,
+                    "evidence": clean_evidence(match.group(0)),
+                    "source": "deterministic_refund_parser",
+                })
+            continue
+        for idx, raw_amount in enumerate(re.findall(r"จำนวน\s*([0-9][0-9,]*(?:\.\d+)?)\s*บาท", line), 1):
+            amount = parse_money_amount(raw_amount)
+            if amount is None:
+                continue
+            order = start_order + len(events)
+            events.append({
+                "event_id": f"{case_id}-refund-{idx:03d}",
+                "event_order": order,
+                "event_type": "REFUND",
+                "event_time": extract_thai_event_time(line),
+                "description": f"ได้รับเงินคืน {amount:,.2f} บาท",
+                "amount": amount,
+                "source_account": None,
+                "destination_account": None,
+                "evidence": clean_evidence(line),
+                "source": "deterministic_refund_parser",
+            })
+    return events
+
+def build_deterministic_timeline(case: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[str, Any]:
+    case_id = case.get("case_id") or extracted.get("case_id") or "unknown-case"
+    case_text = case.get("case_ai_summary", "")
+    transfer_events = parse_transfer_events(case_id, case_text)
+    refund_events = parse_refund_events(case_id, case_text, start_order=len(transfer_events) + 1)
+    events = transfer_events + refund_events
+    if "พนักงานสอบสวน" in case_text or "แจ้งความ" in case_text:
+        order = len(events) + 1
+        events.append({
+            "event_id": f"{case_id}-report-{order:03d}",
+            "event_order": order,
+            "event_type": "REPORT",
+            "event_time": None,
+            "description": "ผู้เสียหายมาพบพนักงานสอบสวนหรือแจ้งความ",
+            "amount": None,
+            "evidence": clean_evidence("พบพนักงานสอบสวน/แจ้งความ"),
+            "source": "deterministic_keyword_parser",
+        })
+    return {
+        "events": events,
+        "audit": {
+            "transfer_event_count": len(transfer_events),
+            "refund_event_count": len(refund_events),
+            "method": "deterministic_timeline_parser",
+        },
+    }
+
+def merge_timeline_events(case_id: str, narrative_events: List[Dict[str, Any]], deterministic_events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    events = []
+    narrative_types = {normalize_event_type(event.get("event_type")) for event in narrative_events}
+    for event in narrative_events[:6]:
+        order = len(events) + 1
+        events.append({
+            "event_id": f"{case_id}-narrative-{order:03d}",
+            "event_order": order,
+            "event_type": normalize_event_type(event.get("event_type")),
+            "event_time": None,
+            "description": str(event.get("description") or "").strip(),
+            "amount": None,
+            "related_tactic": event.get("related_tactic"),
+            "related_channel": event.get("related_channel"),
+            "evidence": clean_evidence(event.get("evidence") or event.get("description")),
+            "source": "llm_narrative_timeline_agent",
+        })
+    for event in deterministic_events:
+        if event.get("event_type") == "REPORT" and "REPORT" in narrative_types:
+            continue
+        copied = dict(event)
+        copied["event_order"] = len(events) + 1
+        copied["event_id"] = f"{case_id}-{copied['event_type'].lower()}-{copied['event_order']:03d}"
+        events.append(copied)
+    return events
+
 def compact_text(text: str, max_chars: int = 3500, tail_chars: int = 800) -> str:
     """Keep relation prompts small while preserving the start and ending context."""
     if not text:
@@ -231,7 +425,7 @@ def parse_destination_transfer_lines(case_text: str) -> List[Dict[str, Any]]:
             continue
         if "ครั้งที่" not in line or "จำนวน" not in line or "บาท" not in line:
             continue
-        account_match = re.search(r"ไปยังบัญชี.*?เลขที่บัญชี\s*([0-9][0-9\s-]*)", line)
+        account_match = re.search(r"ไปยังบัญชี.*?เลขที่(?:บัญชี|พร้อมเพย์)\s*([0-9][0-9\s-]*)", line)
         amount_match = re.search(r"จำนวน\s*([0-9][0-9,]*(?:\.\d+)?)\s*บาท", line)
         if not account_match or not amount_match:
             continue
@@ -395,6 +589,14 @@ def build_threat_indexes(extractions: List[Dict[str, Any]]) -> Dict[str, Dict[st
                 contact_cases.setdefault(normalized, set()).add(case_id)
     return {"accounts": account_cases, "contacts": contact_cases}
 
+def merge_threat_indexes(*indexes: Dict[str, Dict[str, set]]) -> Dict[str, Dict[str, set]]:
+    merged = {"accounts": {}, "contacts": {}}
+    for index in indexes:
+        for index_name in ["accounts", "contacts"]:
+            for key, case_ids in index.get(index_name, {}).items():
+                merged[index_name].setdefault(key, set()).update(case_ids)
+    return merged
+
 def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_indexes: Dict[str, Dict[str, set]]) -> Dict[str, Any]:
     evidentiary_score = 0
     evidentiary_reasons = []
@@ -467,38 +669,115 @@ def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_ind
         },
     }
 
-def write_threat_intel_sqlite(db_path: str, extractions: List[Dict[str, Any]]) -> None:
+def ensure_threat_intel_schema(cur) -> None:
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS account_cases (
+            account_number TEXT NOT NULL,
+            case_id TEXT NOT NULL,
+            first_seen TEXT,
+            last_seen TEXT,
+            source TEXT,
+            PRIMARY KEY (account_number, case_id)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS contact_cases (
+            contact_key TEXT NOT NULL,
+            case_id TEXT NOT NULL,
+            first_seen TEXT,
+            last_seen TEXT,
+            source TEXT,
+            PRIMARY KEY (contact_key, case_id)
+        )
+    """)
+    for table in ["account_cases", "contact_cases"]:
+        cur.execute(f"PRAGMA table_info({table})")
+        columns = {row[1] for row in cur.fetchall()}
+        for column in ["first_seen", "last_seen", "source"]:
+            if column not in columns:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
+    cur.execute("""
+        DELETE FROM account_cases
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM account_cases
+            GROUP BY account_number, case_id
+        )
+    """)
+    cur.execute("""
+        DELETE FROM contact_cases
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM contact_cases
+            GROUP BY contact_key, case_id
+        )
+    """)
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_account_cases_unique ON account_cases(account_number, case_id)")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_cases_unique ON contact_cases(contact_key, case_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_account_cases_account ON account_cases(account_number)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_contact_cases_contact ON contact_cases(contact_key)")
+
+def load_threat_indexes_sqlite(db_path: str) -> Dict[str, Dict[str, set]]:
+    if not os.path.exists(db_path):
+        return {"accounts": {}, "contacts": {}}
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.cursor()
-        cur.execute("DROP TABLE IF EXISTS account_cases")
-        cur.execute("DROP TABLE IF EXISTS contact_cases")
-        cur.execute("CREATE TABLE account_cases (account_number TEXT, case_id TEXT)")
-        cur.execute("CREATE TABLE contact_cases (contact_key TEXT, case_id TEXT)")
+        ensure_threat_intel_schema(cur)
+        account_cases: Dict[str, set] = {}
+        contact_cases: Dict[str, set] = {}
+        for account_number, case_id in cur.execute("SELECT account_number, case_id FROM account_cases"):
+            if account_number and case_id:
+                account_cases.setdefault(account_number, set()).add(case_id)
+        for contact_key, case_id in cur.execute("SELECT contact_key, case_id FROM contact_cases"):
+            if contact_key and case_id:
+                contact_cases.setdefault(contact_key, set()).add(case_id)
+        conn.commit()
+        return {"accounts": account_cases, "contacts": contact_cases}
+    finally:
+        conn.close()
+
+def write_threat_intel_sqlite(db_path: str, extractions: List[Dict[str, Any]], source: str = "extracted_v3.json") -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.cursor()
+        ensure_threat_intel_schema(cur)
+        now = datetime.now(timezone.utc).isoformat()
         for extracted in extractions:
             case_id = extracted.get("case_id")
             scammer_dimensions = extracted.get("scammer_dimensions", {})
             for account in scammer_dimensions.get("bank_accounts", []):
                 normalized = normalize_account_number(account.get("account_number"))
                 if normalized:
-                    cur.execute("INSERT INTO account_cases VALUES (?, ?)", (normalized, case_id))
+                    cur.execute("""
+                        INSERT INTO account_cases (account_number, case_id, first_seen, last_seen, source)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(account_number, case_id)
+                        DO UPDATE SET last_seen = excluded.last_seen, source = excluded.source
+                    """, (normalized, case_id, now, now, source))
             for channel in scammer_dimensions.get("communication_channels", []):
                 normalized = normalize_contact(channel)
                 if normalized:
-                    cur.execute("INSERT INTO contact_cases VALUES (?, ?)", (normalized, case_id))
-        cur.execute("CREATE INDEX idx_account_cases_account ON account_cases(account_number)")
-        cur.execute("CREATE INDEX idx_contact_cases_contact ON contact_cases(contact_key)")
+                    cur.execute("""
+                        INSERT INTO contact_cases (contact_key, case_id, first_seen, last_seen, source)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(contact_key, case_id)
+                        DO UPDATE SET last_seen = excluded.last_seen, source = excluded.source
+                    """, (normalized, case_id, now, now, source))
         conn.commit()
     finally:
         conn.close()
 
 def rescore_extractions(cases: List[Dict[str, Any]], extractions: List[Dict[str, Any]], workspace_dir: str) -> List[Dict[str, Any]]:
     cases_by_id = {case.get("case_id"): case for case in cases}
-    threat_indexes = build_threat_indexes(extractions)
+    db_path = os.path.join(workspace_dir, "threat_intel.sqlite")
+    historical_indexes = load_threat_indexes_sqlite(db_path)
+    current_indexes = build_threat_indexes(extractions)
+    threat_indexes = merge_threat_indexes(historical_indexes, current_indexes)
     for extracted in extractions:
         case = cases_by_id.get(extracted.get("case_id"), {})
         extracted["confidence_score"] = score_extraction(case, extracted, threat_indexes)
-    write_threat_intel_sqlite(os.path.join(workspace_dir, "threat_intel.sqlite"), extractions)
+    write_threat_intel_sqlite(db_path, extractions)
     return extractions
 
 # ==========================================
@@ -816,6 +1095,109 @@ def relation_agent_node(state: AgentState) -> AgentState:
             "status": "Extraction Error",
         }
 
+def timeline_agent_node(state: AgentState) -> AgentState:
+    """Hybrid timeline builder: deterministic money events plus bounded LLM narrative events."""
+    idx = state["current_index"]
+    case = state["cases"][idx]
+    extracted = state.get("temp_extraction")
+
+    print(f"[TimelineAgent] Building forensics timeline for Case {idx+1}...")
+
+    if not extracted:
+        return {
+            **state,
+            "temp_timeline": None,
+            "feedback": "RelationAgent did not produce an extraction for timeline building.",
+            "retry_target": "relation",
+            "review_status": "in_progress",
+            "status": "Timeline Blocked",
+        }
+
+    case_id = case.get("case_id") or extracted.get("case_id") or f"case-{idx+1}"
+    deterministic_timeline = build_deterministic_timeline(case, extracted)
+    narrative_events: List[Dict[str, Any]] = []
+    narrative_error = None
+
+    narrative_text = compact_text(
+        remove_transfer_and_refund_lines(case.get("case_ai_summary", "")),
+        max_chars=int(os.getenv("TIMELINE_NARRATIVE_CONTEXT_MAX_CHARS", "2500")),
+        tail_chars=500,
+    )
+
+    if narrative_text:
+        try:
+            llm = get_llm(num_predict_override=int(os.getenv("LLM_TIMELINE_NUM_PREDICT", "1024")))
+            profile = extracted.get("scammer_dimensions", {})
+            prompt = f"""/no_think
+คุณคือ Cybercrime Narrative Timeline Agent
+
+หน้าที่:
+- สกัดเฉพาะเหตุการณ์ narrative ที่อธิบายว่าเหยื่อถูกหลอกอย่างไร
+- ห้ามสกัดรายการโอนเงิน เพราะระบบ parse transfer/refund แบบ deterministic แล้ว
+- ตอบไม่เกิน 6 events
+- description และ evidence ต้องสั้น
+- LEGAL_ACTION ใช้เฉพาะเมื่อมีข้อความชัดเจนเรื่องอายัดบัญชี ส่งต่อคดี ปิดคดี หรือดำเนินงานทางกฎหมายแล้ว
+- ถ้าไม่มีข้อมูลให้ตอบ []
+- คิดภายในเท่านั้น ห้ามแสดง reasoning
+- ตอบ JSON object เท่านั้น
+
+ข้อมูลคดี:
+- case_id: {case_id}
+- ผู้เสียหาย: {case.get('accuser')}
+- profile context:
+{json.dumps({
+    "attack_type": profile.get("attack_type"),
+    "hook_point": profile.get("hook_point"),
+    "psychological_tactics": profile.get("psychological_tactics", []),
+    "communication_channels": profile.get("communication_channels", []),
+}, ensure_ascii=False)}
+- narrative text:
+{narrative_text}
+
+ตอบ JSON ตาม schema นี้เท่านั้น:
+{{
+  "narrative_events": [
+    {{
+      "event_type": "DISCOVERY | CONTACT | PERSUASION | REALIZATION | REPORT | LEGAL_ACTION",
+      "event_order_hint": 1,
+      "description": "คำอธิบายสั้นๆ",
+      "related_tactic": null,
+      "related_channel": null,
+      "evidence": "หลักฐานสั้นๆ"
+    }}
+  ]
+}}
+"""
+            response = llm.bind(format="json").invoke(prompt)
+            narrative_data = validate_and_parse_json(response.content, NarrativeTimelineExtraction)
+            narrative_events = narrative_data.get("narrative_events", [])[:6]
+        except Exception as e:
+            narrative_error = str(e)
+            print(f"   Narrative timeline extraction skipped: {e}")
+
+    events = merge_timeline_events(case_id, narrative_events, deterministic_timeline.get("events", []))
+    timeline = {
+        "events": events,
+        "audit": {
+            **deterministic_timeline.get("audit", {}),
+            "narrative_event_count": len(narrative_events),
+            "narrative_status": "failed" if narrative_error else "calculated",
+            "narrative_error": narrative_error,
+        },
+    }
+
+    scammer_dimensions = dict(extracted.get("scammer_dimensions", {}))
+    scammer_dimensions["timeline"] = timeline
+    updated_extraction = {**extracted, "scammer_dimensions": scammer_dimensions}
+
+    print(f"   => Timeline built with {len(events)} events.")
+    return {
+        **state,
+        "temp_timeline": timeline,
+        "temp_extraction": updated_extraction,
+        "status": "Timeline Built",
+    }
+
 def guardrail_node(state: AgentState) -> AgentState:
     """Deterministic guardrail for combined LLM subagent output."""
     idx = state["current_index"]
@@ -868,6 +1250,37 @@ def guardrail_node(state: AgentState) -> AgentState:
                 "temp_extraction": None,
                 **register_retry_or_manual_review(state, "relation", feedback),
             }
+
+    timeline_events = scammer_dim.get("timeline", {}).get("events", [])
+    transfer_events = [event for event in timeline_events if event.get("event_type") == "TRANSFER"]
+    if transfer_events:
+        timeline_amount = round(sum(float(event.get("amount") or 0.0) for event in transfer_events), 2)
+        damage_amount = scammer_dim.get("damage_amount")
+        if damage_amount is not None and abs(timeline_amount - float(damage_amount)) > 0.01:
+            feedback = f"ยอด TransferEvent รวม {timeline_amount} ไม่ตรงกับ damage_amount {damage_amount}"
+            print(f"   Guardrail failed [timeline]: {feedback}")
+            return {
+                **state,
+                **register_retry_or_manual_review(state, "timeline", feedback),
+            }
+        known_accounts = {
+            normalize_account_number(account.get("account_number"))
+            for account in scammer_dim.get("bank_accounts", [])
+            if normalize_account_number(account.get("account_number"))
+        }
+        unknown_accounts = sorted({
+            normalize_account_number(event.get("destination_account"))
+            for event in transfer_events
+            if normalize_account_number(event.get("destination_account"))
+            and normalize_account_number(event.get("destination_account")) not in known_accounts
+        })
+        if unknown_accounts:
+            feedback = f"TransferEvent มีบัญชีปลายทางที่ไม่อยู่ใน bank_accounts: {', '.join(unknown_accounts)}"
+            print(f"   Guardrail failed [timeline]: {feedback}")
+            return {
+                **state,
+                **register_retry_or_manual_review(state, "timeline", feedback),
+            }
         
     print("   Guardrail passed.")
     return {
@@ -893,6 +1306,272 @@ def scoring_node(state: AgentState) -> AgentState:
         return {**state, "temp_extraction": extracted, "status": "Scored"}
 
     return {**state, "status": "Scoring Skipped"}
+
+def kg_enabled() -> bool:
+    return os.getenv("KG_ENABLED", "true").lower() in ["1", "true", "yes", "on"]
+
+def node_key(label: str, value: Any) -> str:
+    cleaned = re.sub(r"\s+", " ", str(value or "").strip())
+    return f"{label}:{cleaned}"
+
+def build_entity_index(extracted: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+    scammer_dimensions = extracted.get("scammer_dimensions", {})
+    index: Dict[str, Dict[str, str]] = {}
+
+    def add(raw: Any, label: str, key: str) -> None:
+        raw_text = str(raw or "").strip()
+        if raw_text:
+            index[raw_text.lower()] = {"label": label, "key": key, "name": raw_text}
+
+    victim = extracted.get("accuser_original")
+    add(victim, "Victim", node_key("Victim", victim))
+    for account in scammer_dimensions.get("bank_accounts", []):
+        account_number = normalize_account_number(account.get("account_number"))
+        if account_number:
+            key = node_key("BankAccount", account_number)
+            add(account_number, "BankAccount", key)
+            add(account.get("account_number"), "BankAccount", key)
+        if account.get("owner_name"):
+            add(account.get("owner_name"), "Person", node_key("Person", account.get("owner_name")))
+    for channel in scammer_dimensions.get("communication_channels", []):
+        normalized = normalize_contact(channel)
+        if normalized:
+            key = node_key("ContactChannel", normalized)
+            add(normalized, "ContactChannel", key)
+        add(channel.get("platform"), "ContactChannel", node_key("ContactChannel", normalized or channel.get("platform")))
+        add(channel.get("contact_info"), "ContactChannel", node_key("ContactChannel", normalized or channel.get("contact_info")))
+    for name in scammer_dimensions.get("scammer_names", []):
+        add(name, "Person", node_key("Person", name))
+    for tactic in scammer_dimensions.get("psychological_tactics", []):
+        add(tactic, "PsychologicalTactic", node_key("PsychologicalTactic", tactic))
+    add(scammer_dimensions.get("attack_type"), "ScamType", node_key("ScamType", scammer_dimensions.get("attack_type")))
+    add(scammer_dimensions.get("hook_point"), "HookPoint", node_key("HookPoint", scammer_dimensions.get("hook_point")))
+    return index
+
+def resolve_relation_entity(raw: str, entity_index: Dict[str, Dict[str, str]], case_id: str) -> Dict[str, str]:
+    text = str(raw or "").strip()
+    if not text:
+        return {"label": "EvidenceEntity", "key": node_key("EvidenceEntity", f"{case_id}:unknown"), "name": "unknown"}
+    normalized = normalize_account_number(text)
+    if normalized and normalized in entity_index:
+        return entity_index[normalized]
+    lowered = text.lower()
+    if lowered in entity_index:
+        return entity_index[lowered]
+    for key, resolved in entity_index.items():
+        if key and (key in lowered or lowered in key):
+            return resolved
+    return {"label": "EvidenceEntity", "key": node_key("EvidenceEntity", f"{case_id}:{text}"), "name": text}
+
+def run_merge_node(tx, label: str, key: str, props: Dict[str, Any]) -> None:
+    safe_label = re.sub(r"[^A-Za-z0-9_]", "", label)
+    tx.run(
+        f"""
+        MERGE (n:{safe_label} {{key: $key}})
+        SET n += $props
+        """,
+        key=key,
+        props={k: v for k, v in props.items() if v is not None},
+    )
+
+def kg_write_case(tx, case: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[str, int]:
+    case_id = extracted.get("case_id") or case.get("case_id")
+    victim_name = extracted.get("accuser_original") or case.get("accuser") or "Unknown"
+    demographics = extracted.get("victim_demographics", {})
+    scammer_dimensions = extracted.get("scammer_dimensions", {})
+    confidence_score = extracted.get("confidence_score", {})
+    counts = {"nodes": 0, "edges": 0, "events": 0, "assertions": 0}
+
+    case_key = node_key("Case", case_id)
+    victim_key = node_key("Victim", victim_name)
+    run_merge_node(tx, "Case", case_key, {
+        "key": case_key,
+        "case_id": case_id,
+        "title": f"Case {case_id}",
+        "summary": scammer_dimensions.get("scam_summary"),
+        "damage_amount": scammer_dimensions.get("damage_amount"),
+        "review_status": extracted.get("review_status"),
+        "confidence_total": confidence_score.get("total"),
+        "confidence_grade": confidence_score.get("grade"),
+    })
+    run_merge_node(tx, "Victim", victim_key, {
+        "key": victim_key,
+        "name": victim_name,
+        "gender": demographics.get("gender"),
+        "age": demographics.get("age"),
+        "province": demographics.get("province"),
+        "region": demographics.get("region"),
+    })
+    tx.run("MATCH (v:Victim {key: $victim_key}), (c:Case {key: $case_key}) MERGE (v)-[:REPORTED]->(c)", victim_key=victim_key, case_key=case_key)
+    counts["nodes"] += 2
+    counts["edges"] += 1
+
+    for label, rel_type, value in [
+        ("ScamType", "INVOLVES_SCAM_TYPE", scammer_dimensions.get("attack_type")),
+        ("HookPoint", "STARTED_FROM", scammer_dimensions.get("hook_point")),
+    ]:
+        if value:
+            key = node_key(label, value)
+            run_merge_node(tx, label, key, {"key": key, "name": value, "description": value})
+            tx.run(f"MATCH (c:Case {{key: $case_key}}), (n:{label} {{key: $key}}) MERGE (c)-[:{rel_type}]->(n)", case_key=case_key, key=key)
+            counts["nodes"] += 1
+            counts["edges"] += 1
+
+    for tactic in scammer_dimensions.get("psychological_tactics", []):
+        if tactic:
+            key = node_key("PsychologicalTactic", tactic)
+            run_merge_node(tx, "PsychologicalTactic", key, {"key": key, "description": tactic})
+            tx.run("MATCH (c:Case {key: $case_key}), (t:PsychologicalTactic {key: $key}) MERGE (c)-[:USED_TACTIC]->(t)", case_key=case_key, key=key)
+            counts["nodes"] += 1
+            counts["edges"] += 1
+
+    for channel in scammer_dimensions.get("communication_channels", []):
+        normalized = normalize_contact(channel)
+        if normalized:
+            key = node_key("ContactChannel", normalized)
+            run_merge_node(tx, "ContactChannel", key, {
+                "key": key,
+                "platform": channel.get("platform"),
+                "contact_info": channel.get("contact_info"),
+                "normalized": normalized,
+            })
+            tx.run("MATCH (c:Case {key: $case_key}), (ch:ContactChannel {key: $key}) MERGE (c)-[:CONTACTED_VIA]->(ch)", case_key=case_key, key=key)
+            counts["nodes"] += 1
+            counts["edges"] += 1
+
+    for account in scammer_dimensions.get("bank_accounts", []):
+        account_number = normalize_account_number(account.get("account_number"))
+        if not account_number:
+            continue
+        account_key = node_key("BankAccount", account_number)
+        run_merge_node(tx, "BankAccount", account_key, {
+            "key": account_key,
+            "account_number": account_number,
+            "transfer_amount": account.get("transfer_amount"),
+        })
+        tx.run("""
+            MATCH (c:Case {key: $case_key}), (a:BankAccount {key: $account_key})
+            MERGE (c)-[r:TRANSFERRED_MONEY_TO]->(a)
+            SET r.amount = $amount, r.transfer_date = $transfer_date
+        """, case_key=case_key, account_key=account_key, amount=account.get("transfer_amount"), transfer_date=account.get("transfer_date"))
+        counts["nodes"] += 1
+        counts["edges"] += 1
+        if account.get("bank_name"):
+            bank_key = node_key("Bank", account.get("bank_name"))
+            run_merge_node(tx, "Bank", bank_key, {"key": bank_key, "name": account.get("bank_name")})
+            tx.run("MATCH (a:BankAccount {key: $account_key}), (b:Bank {key: $bank_key}) MERGE (a)-[:REGISTERED_AT]->(b)", account_key=account_key, bank_key=bank_key)
+            counts["nodes"] += 1
+            counts["edges"] += 1
+        if account.get("owner_name"):
+            owner_key = node_key("Person", account.get("owner_name"))
+            run_merge_node(tx, "Person", owner_key, {"key": owner_key, "name": account.get("owner_name"), "role": "account_owner"})
+            tx.run("MATCH (a:BankAccount {key: $account_key}), (p:Person {key: $owner_key}) MERGE (a)-[:OWNED_BY]->(p)", account_key=account_key, owner_key=owner_key)
+            counts["nodes"] += 1
+            counts["edges"] += 1
+
+    previous_event_key = None
+    for event in scammer_dimensions.get("timeline", {}).get("events", []):
+        event_key = node_key("Event", event.get("event_id"))
+        run_merge_node(tx, "Event", event_key, {
+            "key": event_key,
+            "event_id": event.get("event_id"),
+            "event_order": event.get("event_order"),
+            "event_type": event.get("event_type"),
+            "event_time": event.get("event_time"),
+            "description": event.get("description"),
+            "amount": event.get("amount"),
+            "evidence": event.get("evidence"),
+            "source": event.get("source"),
+        })
+        tx.run("MATCH (c:Case {key: $case_key}), (e:Event {key: $event_key}) MERGE (c)-[:HAS_EVENT]->(e)", case_key=case_key, event_key=event_key)
+        if previous_event_key:
+            tx.run("MATCH (a:Event {key: $prev}), (b:Event {key: $curr}) MERGE (a)-[:NEXT_EVENT]->(b)", prev=previous_event_key, curr=event_key)
+            counts["edges"] += 1
+        previous_event_key = event_key
+        counts["nodes"] += 1
+        counts["edges"] += 1
+        counts["events"] += 1
+        destination_account = normalize_account_number(event.get("destination_account"))
+        if destination_account:
+            account_key = node_key("BankAccount", destination_account)
+            run_merge_node(tx, "BankAccount", account_key, {"key": account_key, "account_number": destination_account})
+            tx.run("MATCH (e:Event {key: $event_key}), (a:BankAccount {key: $account_key}) MERGE (e)-[:TRANSFER_TO]->(a)", event_key=event_key, account_key=account_key)
+            counts["edges"] += 1
+
+    entity_index = build_entity_index(extracted)
+    for idx, rel in enumerate(scammer_dimensions.get("relations", []), 1):
+        subject = resolve_relation_entity(rel.get("subject"), entity_index, case_id)
+        obj = resolve_relation_entity(rel.get("object"), entity_index, case_id)
+        run_merge_node(tx, subject["label"], subject["key"], {"key": subject["key"], "name": subject.get("name")})
+        run_merge_node(tx, obj["label"], obj["key"], {"key": obj["key"], "name": obj.get("name")})
+        assertion_key = node_key("Assertion", f"{case_id}:{idx}:{rel.get('predicate')}:{rel.get('subject')}:{rel.get('object')}")
+        run_merge_node(tx, "Assertion", assertion_key, {
+            "key": assertion_key,
+            "predicate": rel.get("predicate"),
+            "evidence": rel.get("evidence"),
+            "source_agent": "RelationAgent",
+            "case_id": case_id,
+        })
+        tx.run("""
+            MATCH (c:Case {key: $case_key}), (a:Assertion {key: $assertion_key})
+            MERGE (c)-[:HAS_ASSERTION]->(a)
+        """, case_key=case_key, assertion_key=assertion_key)
+        tx.run(f"""
+            MATCH (a:Assertion {{key: $assertion_key}})
+            MATCH (s:{subject['label']} {{key: $subject_key}})
+            MATCH (o:{obj['label']} {{key: $object_key}})
+            MERGE (a)-[:ASSERTS_SUBJECT]->(s)
+            MERGE (a)-[:ASSERTS_OBJECT]->(o)
+        """, assertion_key=assertion_key, subject_key=subject["key"], object_key=obj["key"])
+        counts["nodes"] += 3
+        counts["edges"] += 3
+        counts["assertions"] += 1
+
+    return counts
+
+def kg_agent_node(state: AgentState) -> AgentState:
+    """Write forensics-friendly KG to Neo4j directly from workflow state."""
+    idx = state["current_index"]
+    case = state["cases"][idx]
+    extracted = state.get("temp_extraction")
+
+    print(f"[KGAgent] Writing KG for Case {idx+1}...")
+
+    if not extracted:
+        return {**state, "kg_status": "skipped", "status": "KG Skipped"}
+
+    if not kg_enabled():
+        extracted["kg_status"] = "disabled"
+        return {**state, "temp_extraction": extracted, "kg_status": "disabled", "status": "KG Disabled"}
+
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    user = os.getenv("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+    errors = list(state.get("kg_errors", []))
+
+    try:
+        driver = GraphDatabase.driver(
+            uri,
+            auth=(user, password),
+            connection_timeout=float(os.getenv("NEO4J_TIMEOUT", "5")),
+            max_transaction_retry_time=float(os.getenv("NEO4J_MAX_RETRY_TIME", "3")),
+        )
+        try:
+            with driver.session() as session:
+                counts = session.execute_write(kg_write_case, case, extracted)
+        finally:
+            driver.close()
+        extracted["kg_status"] = "written"
+        extracted["kg_summary"] = counts
+        print(f"   => KG written: {counts}")
+        return {**state, "temp_extraction": extracted, "kg_status": "written", "kg_errors": errors, "status": "KG Written"}
+    except Exception as e:
+        error = {"case_id": extracted.get("case_id"), "error": str(e)}
+        errors.append(error)
+        extracted["kg_status"] = "failed"
+        extracted["kg_error"] = str(e)
+        print(f"   KG write failed: {e}")
+        return {**state, "temp_extraction": extracted, "kg_status": "failed", "kg_errors": errors, "status": "KG Failed"}
 
 def save_node(state: AgentState) -> AgentState:
     """Save valid output and move to next case."""
@@ -928,10 +1607,13 @@ def save_node(state: AgentState) -> AgentState:
         "entity_attempts": 0,
         "profile_attempts": 0,
         "relation_attempts": 0,
+        "timeline_attempts": 0,
         "error_history": [],
         "review_status": "in_progress",
+        "kg_status": "not_started",
         "temp_entities": None,
         "temp_profile": None,
+        "temp_timeline": None,
         "temp_extraction": None
     }
 
@@ -950,6 +1632,8 @@ def route_after_guardrail(state: AgentState) -> str:
         return "retry_profile"
     if retry_target == "relation":
         return "retry_relation"
+    if retry_target == "timeline":
+        return "retry_timeline"
     return "save"
 
 def route_after_entity(state: AgentState) -> str:
@@ -972,8 +1656,10 @@ def build_graph():
     workflow.add_node("EntityAgent", entity_agent_node)
     workflow.add_node("ProfileAgent", profile_agent_node)
     workflow.add_node("RelationAgent", relation_agent_node)
+    workflow.add_node("TimelineAgent", timeline_agent_node)
     workflow.add_node("Guardrail", guardrail_node)
     workflow.add_node("Scoring", scoring_node)
+    workflow.add_node("KGAgent", kg_agent_node)
     workflow.add_node("Save", save_node)
     
     workflow.add_conditional_edges(
@@ -992,7 +1678,8 @@ def build_graph():
             "guardrail": "Guardrail",
         }
     )
-    workflow.add_edge("RelationAgent", "Guardrail")
+    workflow.add_edge("RelationAgent", "TimelineAgent")
+    workflow.add_edge("TimelineAgent", "Guardrail")
     workflow.set_entry_point("EntityAgent")
     
     workflow.add_conditional_edges(
@@ -1002,10 +1689,12 @@ def build_graph():
             "retry_entity": "EntityAgent",
             "retry_profile": "ProfileAgent",
             "retry_relation": "RelationAgent",
+            "retry_timeline": "TimelineAgent",
             "save": "Scoring",
         }
     )
-    workflow.add_edge("Scoring", "Save")
+    workflow.add_edge("Scoring", "KGAgent")
+    workflow.add_edge("KGAgent", "Save")
     
     workflow.add_conditional_edges(
         "Save",
@@ -1045,13 +1734,17 @@ if __name__ == "__main__":
             "temp_extraction": None,
             "temp_entities": None,
             "temp_profile": None,
+            "temp_timeline": None,
             "feedback": "",
             "attempts": 0,
             "retry_target": None,
             "entity_attempts": 0,
             "profile_attempts": 0,
             "relation_attempts": 0,
+            "timeline_attempts": 0,
             "error_history": [],
+            "kg_status": "not_started",
+            "kg_errors": [],
             "review_status": "in_progress",
             "status": "Starting"
         }
