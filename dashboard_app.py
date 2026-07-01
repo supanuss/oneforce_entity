@@ -285,29 +285,93 @@ def case_story_graph(case_id: str):
             MATCH p=(e)-[:TRANSFER_TO]->(a)
             RETURN p
             """,
-            """
-            MATCH (c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount)-[:OWNED_BY|REGISTERED_AT]->(n)
-            MATCH p=(a)-[:OWNED_BY|REGISTERED_AT]->(n)
-            RETURN p
-            """,
         ],
     )
 
 
 @app.get("/api/case/{case_id}/money-flow")
 def case_money_flow(case_id: str):
-    return build_curated_graph(
-        case_id,
-        [
-            "MATCH p=(v:Victim)-[:REPORTED]->(c:Case {case_id: $case_id}) RETURN p",
-            "MATCH p=(c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount) RETURN p",
-            """
-            MATCH (c:Case {case_id: $case_id})-[:TRANSFERRED_MONEY_TO]->(a:BankAccount)-[:OWNED_BY|REGISTERED_AT]->(n)
-            MATCH p=(a)-[:OWNED_BY|REGISTERED_AT]->(n)
-            RETURN p
-            """,
-        ],
-    )
+    driver = get_driver()
+    try:
+        with driver.session() as session:
+            case_row = session.run(
+                """
+                MATCH (v:Victim)-[:REPORTED]->(c:Case {case_id: $case_id})
+                RETURN elementId(v) AS victim_id,
+                       v.name AS victim_name,
+                       elementId(c) AS case_id_element,
+                       c.case_id AS case_id,
+                       c.damage_amount AS damage_amount
+                """,
+                case_id=case_id,
+            ).single()
+            if not case_row:
+                return {"nodes": [], "edges": []}
+
+            nodes = [
+                {
+                    "id": case_row["victim_id"],
+                    "label": f"Victim\n{case_row['victim_name']}",
+                    "group": "Victim",
+                    "level": 0,
+                },
+                {
+                    "id": case_row["case_id_element"],
+                    "label": f"Case\n{case_row['case_id'][:8]}\n{format_money(case_row['damage_amount'])}",
+                    "group": "Case",
+                    "level": 1,
+                },
+            ]
+            edges = [{
+                "id": f"{case_row['victim_id']}:{case_row['case_id_element']}",
+                "from": case_row["victim_id"],
+                "to": case_row["case_id_element"],
+                "label": "REPORTED",
+                "arrows": "to",
+            }]
+
+            account_rows = session.run(
+                """
+                MATCH (c:Case {case_id: $case_id})-[t:TRANSFERRED_MONEY_TO]->(a:BankAccount)
+                OPTIONAL MATCH (a)-[:OWNED_BY]->(p:Person)
+                OPTIONAL MATCH (a)-[:REGISTERED_AT]->(b:Bank)
+                RETURN elementId(a) AS account_id,
+                       a.account_number AS account_number,
+                       t.amount AS amount,
+                       collect(DISTINCT p.name) AS owners,
+                       collect(DISTINCT b.name) AS banks
+                ORDER BY coalesce(t.amount, 0) DESC, a.account_number
+                """,
+                case_id=case_id,
+            )
+            for index, row in enumerate(account_rows, 1):
+                owners = [item for item in row["owners"] if item]
+                banks = [item for item in row["banks"] if item]
+                owner_text = ", ".join(owners) if owners else "ไม่ระบุชื่อบัญชี"
+                bank_text = ", ".join(banks) if banks else "ไม่ระบุธนาคาร"
+                nodes.append({
+                    "id": row["account_id"],
+                    "label": f"{row['account_number']}\n{owner_text}\n{bank_text}",
+                    "group": "BankAccount",
+                    "level": 2 + index,
+                    "title": {
+                        "account_number": row["account_number"],
+                        "owner_names": owners,
+                        "banks": banks,
+                        "amount": row["amount"],
+                    },
+                })
+                edges.append({
+                    "id": f"{case_row['case_id_element']}:{row['account_id']}",
+                    "from": case_row["case_id_element"],
+                    "to": row["account_id"],
+                    "label": format_money(row["amount"]),
+                    "arrows": "to",
+                    "title": {"amount": row["amount"]},
+                })
+            return {"nodes": nodes, "edges": edges}
+    finally:
+        driver.close()
 
 
 @app.get("/api/graph/all")
@@ -362,23 +426,23 @@ def graph_all(limit: int = 500):
 
 def display_label(label: str, props: Dict[str, Any]) -> str:
     if label == "Case":
-        return f"Case\\n{props.get('case_id', '')[:8]}\\n{format_money(props.get('damage_amount'))}"
+        return f"Case\n{props.get('case_id', '')[:8]}\n{format_money(props.get('damage_amount'))}"
     if label == "BankAccount":
-        return f"BankAccount\\n{props.get('account_number', '')}"
+        return f"BankAccount\n{props.get('account_number', '')}"
     if label == "Person":
-        return f"Person\\n{props.get('name', '')}"
+        return f"Person\n{props.get('name', '')}"
     if label == "Victim":
-        return f"Victim\\n{props.get('name', '')}"
+        return f"Victim\n{props.get('name', '')}"
     if label == "Event":
         amount = format_money(props.get("amount")) if props.get("amount") else ""
-        return f"{props.get('event_order', '')}. {props.get('event_type', 'Event')}\\n{amount}"
+        return f"{props.get('event_order', '')}. {props.get('event_type', 'Event')}\n{amount}"
     if label == "Assertion":
-        return f"Assertion\\n{props.get('predicate', '')}"
+        return f"Assertion\n{props.get('predicate', '')}"
     if label == "PsychologicalTactic":
-        return f"Tactic\\n{str(props.get('description', ''))[:24]}"
+        return f"Tactic\n{str(props.get('description', ''))[:24]}"
     if label == "ContactChannel":
-        return f"Contact\\n{props.get('platform') or props.get('normalized', '')}"
-    return f"{label}\\n{props.get('name') or props.get('description') or props.get('key') or ''}"
+        return f"Contact\n{props.get('platform') or props.get('normalized', '')}"
+    return f"{label}\n{props.get('name') or props.get('description') or props.get('key') or ''}"
 
 
 def format_money(value: Any) -> str:
