@@ -95,6 +95,20 @@
       border-color: var(--line);
     }
 
+    a.nav-link {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      min-height: 36px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
     button.secondary.active {
       color: #fff;
       background: var(--blue);
@@ -279,9 +293,100 @@
     .muted { color: var(--muted); }
     .nowrap { white-space: nowrap; }
 
+    .insight-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .brief {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .brief-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .brief-title strong {
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .brief-summary {
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      padding: 4px 8px;
+      border: 1px solid #dbe4f0;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .chip.warn {
+      border-color: #f4c790;
+      background: #fff7ed;
+      color: #9a4b00;
+    }
+
+    .insight-list {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .insight-item {
+      border: 1px solid #edf0f5;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      display: grid;
+      gap: 5px;
+    }
+
+    .insight-item .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 750;
+      color: var(--ink);
+    }
+
+    .insight-item .detail {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .mini-tables {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
     @media (max-width: 1100px) {
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .layout, .tables { grid-template-columns: 1fr; }
+      .layout, .tables, .insight-grid, .mini-tables { grid-template-columns: 1fr; }
       #graph { height: 520px; }
     }
 
@@ -300,11 +405,72 @@
     <div class="toolbar">
       <select id="caseSelect" aria-label="Case"></select>
       <button id="refreshBtn">Open Case</button>
+      <a class="nav-link" href="/extracted">Extracted Details</a>
     </div>
   </header>
 
   <main>
     <section class="grid" id="metrics"></section>
+
+    <section class="insight-grid">
+      <div class="panel">
+        <h2>Investigation Insights</h2>
+        <div class="insight-list" id="insightList"></div>
+      </div>
+      <div class="panel">
+        <h2>Case Brief</h2>
+        <div class="brief" id="caseBrief"></div>
+      </div>
+    </section>
+
+    <section class="mini-tables">
+      <div class="panel">
+        <h2>Evidence ที่ใช้ซ้ำ</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ชนิด</th>
+                <th>ค่า</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="sharedRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Scam Pattern ทำเงินสูง</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pattern</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="patternRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>ช่องทางติดต่อซ้ำ</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ช่องทาง</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="contactRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <section class="layout">
       <div class="panel">
@@ -390,6 +556,8 @@
     const metricsEl = document.getElementById("metrics");
     const timelineEl = document.getElementById("timeline");
     const graphTitle = document.getElementById("graphTitle");
+    const insightListEl = document.getElementById("insightList");
+    const caseBriefEl = document.getElementById("caseBrief");
     let network;
     let cases = [];
     let currentMode = "story";
@@ -423,6 +591,11 @@
     function text(value) {
       if (Array.isArray(value)) return value.filter(Boolean).join(", ");
       return value || "-";
+    }
+
+    function short(value, max = 54) {
+      const str = text(value);
+      return str.length > max ? `${str.slice(0, max - 1)}…` : str;
     }
 
     function renderMetrics(summary) {
@@ -486,6 +659,106 @@
       `).join("");
     }
 
+    function renderInsights(data) {
+      const topAccount = (data.top_accounts || [])[0];
+      const topShared = (data.shared_evidence || [])[0];
+      const topPattern = (data.scam_patterns || [])[0];
+      const topContact = (data.repeated_contacts || [])[0];
+      const items = [
+        topAccount && {
+          title: `บัญชีเสี่ยงสุด: ${topAccount.account_number}`,
+          value: `${topAccount.case_count} คดี · ${money(topAccount.total_amount)} บาท`,
+          detail: `ชื่อบัญชี ${text(topAccount.owner_names)} · ธนาคาร ${text(topAccount.banks)}`
+        },
+        topShared && {
+          title: `Evidence เชื่อมคดีมากสุด: ${topShared.shared_key}`,
+          value: `${topShared.case_count} คดี`,
+          detail: `${topShared.entity_type} เชื่อม damage รวม ${money(topShared.total_damage)} บาท`
+        },
+        topPattern && {
+          title: `Pattern ทำเงินสูงสุด: ${short(topPattern.scam_type)}`,
+          value: `${money(topPattern.total_damage)} บาท`,
+          detail: `${topPattern.case_count} คดี · เฉลี่ย ${money(topPattern.avg_damage)} บาทต่อคดี`
+        },
+        topContact && {
+          title: `ช่องทางติดต่อใช้ซ้ำ: ${short(topContact.contact)}`,
+          value: `${topContact.case_count} คดี`,
+          detail: `${topContact.platform || "contact"} · damage รวม ${money(topContact.total_damage)} บาท`
+        }
+      ].filter(Boolean);
+
+      insightListEl.innerHTML = items.map(item => `
+        <div class="insight-item">
+          <div class="topline"><span>${item.title}</span><span>${item.value}</span></div>
+          <div class="detail">${item.detail}</div>
+        </div>
+      `).join("") || `<div class="muted">ยังไม่มี insight จากกราฟ</div>`;
+
+      document.getElementById("sharedRows").innerHTML = (data.shared_evidence || []).map(row => `
+        <tr>
+          <td>${row.entity_type || "-"}</td>
+          <td>${short(row.shared_key, 34)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("patternRows").innerHTML = (data.scam_patterns || []).map(row => `
+        <tr>
+          <td>${short(row.scam_type, 42)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("contactRows").innerHTML = (data.repeated_contacts || []).map(row => `
+        <tr>
+          <td>${short(row.contact, 42)}<div class="muted">${row.platform || "-"}</div></td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderCaseBrief(row) {
+      const stats = row.timeline_stats || {};
+      const signals = row.risk_signals || {};
+      const accounts = row.accounts || [];
+      const reusedAccounts = signals.reused_accounts || [];
+      const reusedContacts = signals.reused_contacts || [];
+      const accountText = accounts.length
+        ? accounts.slice(0, 3).map(item => `${item.account_number} (${money(item.amount)} บาท)`).join(", ")
+        : "-";
+      caseBriefEl.innerHTML = `
+        <div class="brief-title">
+          <strong>${row.case_id ? row.case_id.slice(0, 8) : "-"}</strong>
+          <span class="pill">${money(row.damage_amount)} บาท</span>
+        </div>
+        <div class="brief-summary">${row.summary || "ไม่มี summary"}</div>
+        <div class="chips">
+          ${(row.scam_types || []).filter(Boolean).map(item => `<span class="chip">${short(item, 32)}</span>`).join("")}
+          ${(row.tactics || []).filter(Boolean).slice(0, 4).map(item => `<span class="chip">${short(item, 32)}</span>`).join("")}
+        </div>
+        <div class="chips">
+          <span class="chip">Transfer ${stats.transfer_count || 0} ครั้ง</span>
+          <span class="chip">รวม ${money(stats.transfer_total)} บาท</span>
+          <span class="chip">Events ${stats.event_count || 0}</span>
+          <span class="chip">Score ${row.confidence_total ?? "-"} ${row.confidence_grade ?? ""}</span>
+        </div>
+        <div class="insight-item">
+          <div class="topline"><span>บัญชีปลายทางในเคสนี้</span><span>${accounts.length} บัญชี</span></div>
+          <div class="detail">${accountText}</div>
+        </div>
+        <div class="insight-item">
+          <div class="topline"><span>สัญญาณเชื่อมคดีอื่น</span><span>${(signals.reused_account_count || 0) + (signals.reused_contact_count || 0)} จุด</span></div>
+          <div class="detail">
+            บัญชีซ้ำ: ${reusedAccounts.map(item => item.account_number).join(", ") || "-"}<br>
+            ช่องทางซ้ำ: ${reusedContacts.map(item => item.contact).join(", ") || "-"}
+          </div>
+        </div>
+      `;
+    }
+
     function renderTimeline(rows) {
       timelineEl.innerHTML = rows.map(row => {
         const cls = String(row.event_type || "").toLowerCase();
@@ -546,35 +819,41 @@
         story: "Story Graph",
         money: "Money Flow",
         analyst: "Analyst KG",
-        all: "All Graph"
+        all: "All Cases Overview"
       };
-      graphTitle.textContent = `${titleMap[currentMode]} · ${caseId.slice(0, 8)}`;
+      graphTitle.textContent = currentMode === "all"
+        ? titleMap[currentMode]
+        : `${titleMap[currentMode]} · ${caseId.slice(0, 8)}`;
       const graphPath = currentMode === "story"
         ? `/api/case/${caseId}/story-graph`
         : currentMode === "money"
           ? `/api/case/${caseId}/money-flow`
           : currentMode === "analyst"
             ? `/api/case/${caseId}/graph`
-            : `/api/graph/all?limit=500`;
-      const [timeline, graph] = await Promise.all([
+            : `/api/graph/all`;
+      const [brief, timeline, graph] = await Promise.all([
+        api(`/api/case/${caseId}/brief`),
         api(`/api/case/${caseId}/timeline`),
         api(graphPath)
       ]);
+      renderCaseBrief(brief);
       renderTimeline(timeline);
       renderGraph(graph, currentMode);
     }
 
     async function init() {
-      const [summary, caseRows, mules, tactics] = await Promise.all([
+      const [summary, caseRows, mules, tactics, insights] = await Promise.all([
         api("/api/summary"),
         api("/api/cases"),
         api("/api/mule-accounts"),
-        api("/api/tactics")
+        api("/api/tactics"),
+        api("/api/insights")
       ]);
       renderMetrics(summary);
       renderCases(caseRows);
       renderMules(mules);
       renderTactics(tactics);
+      renderInsights(insights);
       if (caseRows.length) {
         caseSelect.value = caseRows[0].case_id;
         await loadCase(caseRows[0].case_id);

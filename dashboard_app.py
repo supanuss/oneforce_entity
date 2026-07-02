@@ -1,18 +1,43 @@
+import json
 import os
+import secrets
+from functools import lru_cache
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from neo4j import GraphDatabase
+
+from semantic_search import get_similar_cases
+from warrant_generator import generate_warrant_dossier_text
 
 load_dotenv(dotenv_path=".env")
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+DASHBOARD_USER = os.getenv("DASHBOARD_USER", "sp")
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "pitch1234")
+EXTRACTED_JSON_PATH = os.getenv("EXTRACTED_JSON_PATH", "extracted.json")
 
-app = FastAPI(title="Forensics KG Dashboard")
+security = HTTPBasic()
+
+
+def require_auth(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    valid_user = secrets.compare_digest(credentials.username, DASHBOARD_USER)
+    valid_password = secrets.compare_digest(credentials.password, DASHBOARD_PASSWORD)
+    if not (valid_user and valid_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+app = FastAPI(title="Forensics KG Dashboard", dependencies=[Depends(require_auth)])
 
 
 def get_driver():
@@ -46,6 +71,39 @@ def run_query(query: str, **params) -> List[Dict[str, Any]]:
             driver.close()
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Neo4j query failed: {exc}") from exc
+
+
+@lru_cache(maxsize=1)
+def load_extracted_data() -> List[Dict[str, Any]]:
+    if not os.path.exists(EXTRACTED_JSON_PATH):
+        raise HTTPException(status_code=404, detail=f"{EXTRACTED_JSON_PATH} not found")
+    with open(EXTRACTED_JSON_PATH, "r", encoding="utf-8") as file:
+        data = json.load(file)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        return list(data.values())
+    raise HTTPException(status_code=500, detail=f"{EXTRACTED_JSON_PATH} has unsupported format")
+
+
+def extracted_case_summary(record: Dict[str, Any]) -> Dict[str, Any]:
+    scammer = record.get("scammer_dimensions") or {}
+    confidence = record.get("confidence_score") or {}
+    timeline = scammer.get("timeline") or {}
+    accounts = scammer.get("bank_accounts") or []
+    return {
+        "case_id": record.get("case_id"),
+        "victim_name": record.get("accuser_original"),
+        "scam_type": scammer.get("attack_type"),
+        "damage_amount": scammer.get("damage_amount"),
+        "summary": scammer.get("scam_summary"),
+        "bank_account_count": len(accounts) if isinstance(accounts, list) else 0,
+        "event_count": len(timeline.get("events") or []) if isinstance(timeline, dict) else 0,
+        "confidence_total": confidence.get("total"),
+        "confidence_grade": confidence.get("grade"),
+        "kg_status": record.get("kg_status"),
+        "review_status": record.get("review_status"),
+    }
 
 
 def add_paths_to_graph(session, query: str, graph_nodes: Dict[str, Dict[str, Any]], graph_edges: Dict[str, Dict[str, Any]], **params) -> None:
@@ -96,6 +154,26 @@ def build_curated_graph(case_id: str, queries: List[str]) -> Dict[str, List[Dict
 def index():
     with open("index.html", "r", encoding="utf-8") as file:
         return file.read()
+
+
+@app.get("/extracted", response_class=HTMLResponse)
+def extracted_page():
+    with open("extracted.html", "r", encoding="utf-8") as file:
+        return file.read()
+
+
+@app.get("/api/extracted-cases")
+def extracted_cases():
+    records = load_extracted_data()
+    return [extracted_case_summary(record) for record in records]
+
+
+@app.get("/api/extracted-case/{case_id}")
+def extracted_case(case_id: str):
+    for record in load_extracted_data():
+        if str(record.get("case_id")) == case_id:
+            return record
+    raise HTTPException(status_code=404, detail="Case not found in extracted.json")
 
 
 @app.get("/api/summary")
@@ -149,6 +227,21 @@ def cases():
         """
     )
 
+@app.get("/api/semantic-search/{case_id}")
+def api_semantic_search(case_id: str):
+    cases = get_similar_cases(case_id)
+    if not cases:
+        raise HTTPException(status_code=404, detail="No similar cases found or embedding failed.")
+    return {"case_id": case_id, "similar_cases": cases}
+
+@app.get("/api/generate-warrant/{cluster_id}")
+def api_generate_warrant(cluster_id: str):
+    text = generate_warrant_dossier_text(cluster_id)
+    if text.startswith("Error"):
+        raise HTTPException(status_code=400, detail=text)
+    return {"cluster_id": cluster_id, "dossier": text}
+
+
 
 @app.get("/api/mule-accounts")
 def mule_accounts():
@@ -179,6 +272,170 @@ def tactics():
         LIMIT 20
         """
     )
+
+
+@app.get("/api/insights")
+def insights():
+    top_accounts = run_query(
+        """
+        MATCH (a:BankAccount)
+        OPTIONAL MATCH (c:Case)-[t:TRANSFERRED_MONEY_TO]->(a)
+        OPTIONAL MATCH (a)-[:OWNED_BY]->(p:Person)
+        OPTIONAL MATCH (a)-[:REGISTERED_AT]->(b:Bank)
+        WITH a, collect(DISTINCT c) AS cases, collect(t) AS transfers,
+             collect(DISTINCT p.name) AS owners, collect(DISTINCT b.name) AS banks
+        RETURN a.account_number AS account_number,
+               owners AS owner_names,
+               banks AS banks,
+               size([case IN cases WHERE case IS NOT NULL]) AS case_count,
+               reduce(total = 0.0, transfer IN transfers | total + coalesce(transfer.amount, 0.0)) AS total_amount,
+               [case IN cases WHERE case IS NOT NULL | case.case_id][0..8] AS case_ids
+        ORDER BY case_count DESC, total_amount DESC, account_number
+        LIMIT 10
+        """
+    )
+    repeated_contacts = run_query(
+        """
+        MATCH (ch:ContactChannel)<-[:CONTACTED_VIA]-(c:Case)
+        WITH ch, collect(DISTINCT c) AS cases
+        WHERE size(cases) > 1
+        RETURN ch.platform AS platform,
+               coalesce(ch.normalized, ch.value, ch.platform) AS contact,
+               size(cases) AS case_count,
+               reduce(total = 0.0, case IN cases | total + coalesce(case.damage_amount, 0.0)) AS total_damage,
+               [case IN cases | case.case_id][0..8] AS case_ids
+        ORDER BY case_count DESC, total_damage DESC, contact
+        LIMIT 10
+        """
+    )
+    scam_patterns = run_query(
+        """
+        MATCH (c:Case)-[:INVOLVES_SCAM_TYPE]->(s:ScamType)
+        RETURN coalesce(s.name, s.description, s.key) AS scam_type,
+               count(DISTINCT c) AS case_count,
+               sum(coalesce(c.damage_amount, 0.0)) AS total_damage,
+               avg(coalesce(c.damage_amount, 0.0)) AS avg_damage
+        ORDER BY total_damage DESC, case_count DESC
+        LIMIT 10
+        """
+    )
+    tactic_patterns = run_query(
+        """
+        MATCH (c:Case)-[:USED_TACTIC]->(t:PsychologicalTactic)
+        RETURN t.description AS tactic,
+               count(DISTINCT c) AS case_count,
+               sum(coalesce(c.damage_amount, 0.0)) AS total_damage
+        ORDER BY total_damage DESC, case_count DESC
+        LIMIT 10
+        """
+    )
+    shared_evidence = run_query(
+        """
+        MATCH (c:Case)-[:TRANSFERRED_MONEY_TO|CONTACTED_VIA]->(entity)<-[:TRANSFERRED_MONEY_TO|CONTACTED_VIA]-(other:Case)
+        WHERE c <> other
+        WITH entity, labels(entity)[0] AS entity_type, collect(DISTINCT c) + collect(DISTINCT other) AS raw_cases
+        UNWIND raw_cases AS case
+        WITH entity, entity_type, collect(DISTINCT case) AS cases
+        WHERE size(cases) > 1
+        RETURN entity_type,
+               CASE entity_type
+                 WHEN 'BankAccount' THEN entity.account_number
+                 WHEN 'ContactChannel' THEN coalesce(entity.normalized, entity.value, entity.platform)
+                 ELSE coalesce(entity.name, entity.key, entity.description)
+               END AS shared_key,
+               size(cases) AS case_count,
+               reduce(total = 0.0, case IN cases | total + coalesce(case.damage_amount, 0.0)) AS total_damage,
+               [case IN cases | case.case_id][0..12] AS case_ids
+        ORDER BY case_count DESC, total_damage DESC, shared_key
+        LIMIT 15
+        """
+    )
+    return {
+        "top_accounts": top_accounts,
+        "repeated_contacts": repeated_contacts,
+        "scam_patterns": scam_patterns,
+        "tactic_patterns": tactic_patterns,
+        "shared_evidence": shared_evidence,
+    }
+
+
+@app.get("/api/case/{case_id}/brief")
+def case_brief(case_id: str):
+    rows = run_query(
+        """
+        MATCH (c:Case {case_id: $case_id})
+        OPTIONAL MATCH (v:Victim)-[:REPORTED]->(c)
+        OPTIONAL MATCH (c)-[:INVOLVES_SCAM_TYPE]->(s:ScamType)
+        OPTIONAL MATCH (c)-[:STARTED_FROM]->(h:HookPoint)
+        OPTIONAL MATCH (c)-[:USED_TACTIC]->(t:PsychologicalTactic)
+        OPTIONAL MATCH (c)-[:CONTACTED_VIA]->(ch:ContactChannel)
+        RETURN c.case_id AS case_id,
+               c.summary AS summary,
+               c.damage_amount AS damage_amount,
+               c.confidence_total AS confidence_total,
+               c.confidence_grade AS confidence_grade,
+               collect(DISTINCT v.name) AS victims,
+               collect(DISTINCT coalesce(s.name, s.description, s.key)) AS scam_types,
+               collect(DISTINCT coalesce(h.description, h.name, h.key)) AS hook_points,
+               collect(DISTINCT t.description) AS tactics,
+               collect(DISTINCT {platform: ch.platform, contact: coalesce(ch.normalized, ch.value, ch.platform)}) AS contacts
+        """,
+        case_id=case_id,
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    accounts = run_query(
+        """
+        MATCH (c:Case {case_id: $case_id})-[r:TRANSFERRED_MONEY_TO]->(a:BankAccount)
+        OPTIONAL MATCH (a)-[:OWNED_BY]->(p:Person)
+        OPTIONAL MATCH (a)-[:REGISTERED_AT]->(b:Bank)
+        WITH a, r, collect(DISTINCT p.name) AS owners, collect(DISTINCT b.name) AS banks
+        OPTIONAL MATCH (other:Case)-[:TRANSFERRED_MONEY_TO]->(a)
+        RETURN a.account_number AS account_number,
+               owners AS owner_names,
+               banks AS banks,
+               r.amount AS amount,
+               count(DISTINCT other) AS total_case_count
+        ORDER BY coalesce(r.amount, 0) DESC, account_number
+        """,
+        case_id=case_id,
+    )
+    contacts = run_query(
+        """
+        MATCH (c:Case {case_id: $case_id})-[:CONTACTED_VIA]->(ch:ContactChannel)
+        OPTIONAL MATCH (other:Case)-[:CONTACTED_VIA]->(ch)
+        RETURN ch.platform AS platform,
+               coalesce(ch.normalized, ch.value, ch.platform) AS contact,
+               count(DISTINCT other) AS total_case_count
+        ORDER BY total_case_count DESC, contact
+        """,
+        case_id=case_id,
+    )
+    timeline_stats = run_query(
+        """
+        MATCH (c:Case {case_id: $case_id})-[:HAS_EVENT]->(e:Event)
+        RETURN count(e) AS event_count,
+               sum(CASE WHEN e.event_type = 'TRANSFER' THEN 1 ELSE 0 END) AS transfer_count,
+               sum(CASE WHEN e.event_type = 'TRANSFER' THEN coalesce(e.amount, 0.0) ELSE 0.0 END) AS transfer_total
+        """,
+        case_id=case_id,
+    )
+    repeated_accounts = [row for row in accounts if (row.get("total_case_count") or 0) > 1]
+    repeated_contact_rows = [row for row in contacts if (row.get("total_case_count") or 0) > 1]
+    case_row = rows[0]
+    return {
+        **case_row,
+        "accounts": accounts,
+        "contacts": contacts,
+        "timeline_stats": timeline_stats[0] if timeline_stats else {},
+        "risk_signals": {
+            "reused_account_count": len(repeated_accounts),
+            "reused_contact_count": len(repeated_contact_rows),
+            "reused_accounts": repeated_accounts[:5],
+            "reused_contacts": repeated_contact_rows[:5],
+        },
+    }
 
 
 @app.get("/api/case/{case_id}/timeline")
@@ -389,51 +646,96 @@ def case_money_flow(case_id: str):
 
 
 @app.get("/api/graph/all")
-def graph_all(limit: int = 500):
+def graph_all():
     driver = get_driver()
     try:
         with driver.session() as session:
-            nodes = []
+            nodes_by_id: Dict[str, Dict[str, Any]] = {}
+            edges_by_id: Dict[str, Dict[str, Any]] = {}
+
+            def add_node(node_id: str, label: str, props: Dict[str, Any]) -> None:
+                if node_id not in nodes_by_id:
+                    nodes_by_id[node_id] = {
+                        "id": node_id,
+                        "label": display_label(label, props),
+                        "group": label,
+                        "title": props,
+                    }
+
+            def add_edge(edge_id: str, source: str, target: str, rel_type: str, props: Dict[str, Any]) -> None:
+                if edge_id not in edges_by_id:
+                    edges_by_id[edge_id] = {
+                        "id": edge_id,
+                        "from": source,
+                        "to": target,
+                        "label": rel_type,
+                        "arrows": "to",
+                        "title": props,
+                    }
+
             for record in session.run(
                 """
-                MATCH (n)
-                RETURN elementId(n) AS id, labels(n) AS labels, properties(n) AS props
-                LIMIT $limit
-                """,
-                limit=limit,
+                MATCH (c:Case)
+                RETURN elementId(c) AS id, labels(c) AS labels, properties(c) AS props
+                ORDER BY coalesce(c.damage_amount, 0) DESC, c.case_id
+                """
             ):
                 props = to_plain(record["props"])
-                label = record["labels"][0] if record["labels"] else "Node"
-                nodes.append({
-                    "id": record["id"],
-                    "label": display_label(label, props),
-                    "group": label,
-                    "title": props,
-                })
-            node_ids = {node["id"] for node in nodes}
-            edges = []
+                add_node(record["id"], "Case", props)
+
             for record in session.run(
                 """
-                MATCH (a)-[r]->(b)
-                RETURN elementId(r) AS id,
-                       elementId(a) AS source,
-                       elementId(b) AS target,
-                       type(r) AS type,
-                       properties(r) AS props
-                LIMIT $limit
-                """,
-                limit=limit * 2,
+                MATCH (c:Case)-[r:TRANSFERRED_MONEY_TO]->(a:BankAccount)
+                RETURN elementId(c) AS case_id,
+                       properties(c) AS case_props,
+                       elementId(a) AS account_id,
+                       properties(a) AS account_props,
+                       elementId(r) AS rel_id,
+                       properties(r) AS rel_props
+                """
             ):
-                if record["source"] in node_ids and record["target"] in node_ids:
-                    edges.append({
-                        "id": record["id"],
-                        "from": record["source"],
-                        "to": record["target"],
-                        "label": record["type"],
-                        "arrows": "to",
-                        "title": to_plain(record["props"]),
-                    })
-            return {"nodes": nodes, "edges": edges}
+                add_node(record["case_id"], "Case", to_plain(record["case_props"]))
+                add_node(record["account_id"], "BankAccount", to_plain(record["account_props"]))
+                add_edge(record["rel_id"], record["case_id"], record["account_id"], "TRANSFERRED_MONEY_TO", to_plain(record["rel_props"]))
+
+            for record in session.run(
+                """
+                MATCH (c:Case)-[r:CONTACTED_VIA]->(ch:ContactChannel)
+                RETURN elementId(c) AS case_id,
+                       properties(c) AS case_props,
+                       elementId(ch) AS channel_id,
+                       properties(ch) AS channel_props,
+                       elementId(r) AS rel_id,
+                       properties(r) AS rel_props
+                """
+            ):
+                add_node(record["case_id"], "Case", to_plain(record["case_props"]))
+                add_node(record["channel_id"], "ContactChannel", to_plain(record["channel_props"]))
+                add_edge(record["rel_id"], record["case_id"], record["channel_id"], "CONTACTED_VIA", to_plain(record["rel_props"]))
+
+            for record in session.run(
+                """
+                MATCH (c:Case)-[r:INVOLVES_SCAM_TYPE]->(s:ScamType)
+                RETURN elementId(c) AS case_id,
+                       properties(c) AS case_props,
+                       elementId(s) AS scam_type_id,
+                       properties(s) AS scam_type_props,
+                       elementId(r) AS rel_id,
+                       properties(r) AS rel_props
+                """
+            ):
+                add_node(record["case_id"], "Case", to_plain(record["case_props"]))
+                add_node(record["scam_type_id"], "ScamType", to_plain(record["scam_type_props"]))
+                add_edge(record["rel_id"], record["case_id"], record["scam_type_id"], "INVOLVES_SCAM_TYPE", to_plain(record["rel_props"]))
+
+            return {
+                "nodes": list(nodes_by_id.values()),
+                "edges": list(edges_by_id.values()),
+                "meta": {
+                    "mode": "all_cases_overview",
+                    "omitted_layers": ["Event", "Assertion"],
+                },
+            }
     finally:
         driver.close()
 

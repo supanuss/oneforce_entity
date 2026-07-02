@@ -1,0 +1,12 @@
+.env
+.env copy
+.git
+.venv
+__pycache__
+*.pyc
+*.log
+*.sqlite
+extracted_*.json
+latest_case_recordings.json
+cases_summary.md
+diagnostics.txt

@@ -3,8 +3,10 @@ langchain
 langchain-google-genai
 pydantic
 networkx
+numpy<2
 matplotlib
 python-dotenv
+pymongo
 neo4j
 langchain-openai
 langchain-ollama

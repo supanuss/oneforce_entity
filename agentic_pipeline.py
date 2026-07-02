@@ -81,12 +81,23 @@ class ProfileExtraction(BaseModel):
     @field_validator("psychological_tactics", mode="before")
     @classmethod
     def clean_string_list(cls, value):
+        invalid_values = {"true", "false", "none", "null", "n/a", "na", "-", "ไม่ระบุ"}
         if value is None:
             return []
+        if isinstance(value, bool):
+            return []
         if isinstance(value, list):
-            return [str(item).strip() for item in value if item is not None and str(item).strip()]
+            cleaned = []
+            for item in value:
+                if item is None or isinstance(item, bool):
+                    continue
+                text = str(item).strip()
+                if text and text.lower() not in invalid_values:
+                    cleaned.append(text)
+            return cleaned
         if isinstance(value, str) and value.strip():
-            return [value.strip()]
+            text = value.strip()
+            return [] if text.lower() in invalid_values else [text]
         return []
 
 class RelationExtraction(BaseModel):
@@ -526,6 +537,126 @@ def calculate_damage_amount(case_text: str, bank_accounts: List[Dict[str, Any]])
         },
     }
 
+def is_plausible_destination_account(account_number: Optional[str]) -> bool:
+    digits = normalize_account_number(account_number)
+    return bool(digits and 9 <= len(digits) <= 15)
+
+def sanitize_destination_bank_accounts(
+    bank_accounts: List[Dict[str, Any]],
+    case_text: str = "",
+) -> Dict[str, Any]:
+    """Drop source accounts, short suffixes, and negative transfer amounts before scoring/KG."""
+    transfer_events = parse_transfer_events("audit", case_text) if case_text else []
+    destination_accounts = {
+        normalize_account_number(event.get("destination_account"))
+        for event in transfer_events
+        if normalize_account_number(event.get("destination_account"))
+    }
+    source_accounts = {
+        normalize_account_number(event.get("source_account"))
+        for event in transfer_events
+        if normalize_account_number(event.get("source_account"))
+    }
+
+    cleaned_accounts: Dict[str, Dict[str, Any]] = {}
+    dropped = []
+    for account in bank_accounts:
+        normalized = normalize_account_number(account.get("account_number"))
+        if not normalized or not is_plausible_destination_account(normalized):
+            dropped.append({"account_number": account.get("account_number"), "reason": "invalid_or_partial_account_number"})
+            continue
+        try:
+            transfer_amount = float(account.get("transfer_amount")) if account.get("transfer_amount") not in [None, ""] else None
+        except (TypeError, ValueError):
+            transfer_amount = None
+        if transfer_amount is not None and transfer_amount < 0:
+            dropped.append({"account_number": normalized, "reason": "negative_transfer_amount"})
+            continue
+        if normalized in source_accounts and normalized not in destination_accounts:
+            dropped.append({"account_number": normalized, "reason": "source_account_not_destination"})
+            continue
+
+        cleaned = dict(account)
+        cleaned["account_number"] = normalized
+        if transfer_amount is not None:
+            cleaned["transfer_amount"] = round(transfer_amount, 2)
+        if normalized in cleaned_accounts:
+            existing = cleaned_accounts[normalized]
+            for key in ["owner_name", "bank_name", "transfer_date"]:
+                if not existing.get(key) and cleaned.get(key):
+                    existing[key] = cleaned[key]
+            if existing.get("transfer_amount") in [None, ""] and cleaned.get("transfer_amount") not in [None, ""]:
+                existing["transfer_amount"] = cleaned["transfer_amount"]
+        else:
+            cleaned_accounts[normalized] = cleaned
+
+    return {
+        "bank_accounts": list(cleaned_accounts.values()),
+        "audit": {
+            "method": "sanitize_destination_bank_accounts",
+            "dropped_accounts": dropped,
+        },
+    }
+
+def reconcile_bank_accounts_from_timeline(
+    bank_accounts: List[Dict[str, Any]],
+    timeline_events: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Ensure deterministic transfer destinations exist as BankAccount records."""
+    accounts_by_number: Dict[str, Dict[str, Any]] = {}
+    for account in bank_accounts:
+        normalized = normalize_account_number(account.get("account_number"))
+        if normalized:
+            merged = dict(account)
+            merged["account_number"] = normalized
+            accounts_by_number[normalized] = merged
+
+    transfer_totals: Dict[str, float] = {}
+    transfer_dates: Dict[str, str] = {}
+    for event in timeline_events:
+        if event.get("event_type") != "TRANSFER":
+            continue
+        destination = normalize_account_number(event.get("destination_account"))
+        if not destination:
+            continue
+        try:
+            amount = float(event.get("amount") or 0.0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        transfer_totals[destination] = transfer_totals.get(destination, 0.0) + amount
+        if event.get("event_time") and destination not in transfer_dates:
+            transfer_dates[destination] = event.get("event_time")
+
+    added_accounts = []
+    updated_accounts = []
+    for account_number, amount in transfer_totals.items():
+        if account_number not in accounts_by_number:
+            accounts_by_number[account_number] = {
+                "owner_name": None,
+                "bank_name": None,
+                "account_number": account_number,
+                "transfer_amount": round(amount, 2),
+                "transfer_date": transfer_dates.get(account_number),
+                "source": "timeline_reconciliation",
+            }
+            added_accounts.append(account_number)
+            continue
+        account = accounts_by_number[account_number]
+        if account.get("transfer_amount") in [None, ""]:
+            account["transfer_amount"] = round(amount, 2)
+            updated_accounts.append(account_number)
+        if not account.get("transfer_date") and transfer_dates.get(account_number):
+            account["transfer_date"] = transfer_dates[account_number]
+
+    return {
+        "bank_accounts": list(accounts_by_number.values()),
+        "audit": {
+            "method": "reconcile_bank_accounts_from_timeline",
+            "added_account_numbers": added_accounts,
+            "updated_account_numbers": updated_accounts,
+        },
+    }
+
 def normalize_account_number(account_number: Optional[str]) -> Optional[str]:
     if not account_number:
         return None
@@ -579,6 +710,7 @@ def case_status_score(case: Dict[str, Any]) -> Dict[str, Any]:
 def build_threat_indexes(extractions: List[Dict[str, Any]]) -> Dict[str, Dict[str, set]]:
     account_cases: Dict[str, set] = {}
     contact_cases: Dict[str, set] = {}
+    account_amounts: Dict[str, Dict[str, float]] = {}
     for extracted in extractions:
         case_id = extracted.get("case_id")
         scammer_dimensions = extracted.get("scammer_dimensions", {})
@@ -586,18 +718,30 @@ def build_threat_indexes(extractions: List[Dict[str, Any]]) -> Dict[str, Dict[st
             normalized = normalize_account_number(account.get("account_number"))
             if normalized:
                 account_cases.setdefault(normalized, set()).add(case_id)
+                try:
+                    transfer_amount = float(account.get("transfer_amount") or 0.0)
+                except (ValueError, TypeError):
+                    transfer_amount = 0.0
+                account_amounts.setdefault(normalized, {}).setdefault(case_id, 0.0)
+                account_amounts[normalized][case_id] += transfer_amount
         for channel in scammer_dimensions.get("communication_channels", []):
             normalized = normalize_contact(channel)
             if normalized:
                 contact_cases.setdefault(normalized, set()).add(case_id)
-    return {"accounts": account_cases, "contacts": contact_cases}
+    return {"accounts": account_cases, "contacts": contact_cases, "account_amounts": account_amounts}
 
 def merge_threat_indexes(*indexes: Dict[str, Dict[str, set]]) -> Dict[str, Dict[str, set]]:
-    merged = {"accounts": {}, "contacts": {}}
+    merged = {"accounts": {}, "contacts": {}, "account_amounts": {}}
     for index in indexes:
         for index_name in ["accounts", "contacts"]:
             for key, case_ids in index.get(index_name, {}).items():
                 merged[index_name].setdefault(key, set()).update(case_ids)
+        for account_number, case_amounts in index.get("account_amounts", {}).items():
+            merged["account_amounts"].setdefault(account_number, {})
+            for case_id, amount in case_amounts.items():
+                merged["account_amounts"][account_number][case_id] = (
+                    merged["account_amounts"][account_number].get(case_id, 0.0) + float(amount or 0.0)
+                )
     return merged
 
 def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_indexes: Dict[str, Dict[str, set]]) -> Dict[str, Any]:
@@ -620,14 +764,61 @@ def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_ind
         threat_reasons.append("มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ")
 
     case_id = extracted.get("case_id")
+    
+    # Mule Account Risk Analysis
+    mule_account_risk_details = []
+    highest_mule_tier = 3
+    
     duplicate_accounts = []
     for account in extracted.get("scammer_dimensions", {}).get("bank_accounts", []):
         normalized = normalize_account_number(account.get("account_number"))
-        if normalized and len(threat_indexes.get("accounts", {}).get(normalized, set()) - {case_id}) > 0:
+        if not normalized:
+            continue
+            
+        case_occurrences = len(threat_indexes.get("accounts", {}).get(normalized, set()))
+        if case_occurrences == 0:
+            case_occurrences = 1 # At least this current case
+
+        account_case_amounts = threat_indexes.get("account_amounts", {}).get(normalized, {})
+        historical_transfer_amount = sum(float(amount or 0.0) for amount in account_case_amounts.values())
+        if historical_transfer_amount <= 0:
+            try:
+                historical_transfer_amount = float(account.get("transfer_amount") or 0.0)
+            except (ValueError, TypeError):
+                historical_transfer_amount = 0.0
+
+        # Determine Tier
+        if case_occurrences > 2 or historical_transfer_amount >= 100000:
+            tier = 1 # Red (Master Mule)
+        elif case_occurrences == 2 or historical_transfer_amount >= 10000:
+            tier = 2 # Orange (Active Mule)
+        else:
+            tier = 3 # Yellow (Suspected Mule)
+            
+        highest_mule_tier = min(highest_mule_tier, tier)
+        mule_account_risk_details.append({
+            "account_number": normalized,
+            "tier": tier,
+            "case_occurrences": case_occurrences,
+            "transfer_amount": round(historical_transfer_amount, 2),
+            "total_transfer_amount": round(historical_transfer_amount, 2),
+            "reason": f"Tier {tier} Mule - Found in {case_occurrences} case(s), Total Amount: {historical_transfer_amount:,.2f} THB"
+        })
+        
+        # Check for external duplicates
+        if len(threat_indexes.get("accounts", {}).get(normalized, set()) - {case_id}) > 0:
             duplicate_accounts.append(normalized)
+
     if duplicate_accounts:
         threat_score += 10
         threat_reasons.append(f"บัญชีปลายทางเคยปรากฏในคดีอื่น: {', '.join(sorted(set(duplicate_accounts)))}")
+        
+    if highest_mule_tier == 1:
+        threat_score += 15
+        threat_reasons.append("พบบัญชีม้าความเสี่ยงสูง (Tier 1: แดง)")
+    elif highest_mule_tier == 2:
+        threat_score += 5
+        threat_reasons.append("พบบัญชีม้าความเสี่ยงปานกลาง (Tier 2: ส้ม)")
 
     duplicate_contacts = []
     for channel in extracted.get("scammer_dimensions", {}).get("communication_channels", []):
@@ -637,6 +828,9 @@ def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_ind
     if duplicate_contacts:
         threat_score += 5
         threat_reasons.append(f"ช่องทางติดต่อเคยปรากฏในคดีอื่น: {', '.join(sorted(set(duplicate_contacts)))}")
+
+    raw_threat_score = threat_score
+    threat_score = min(threat_score, 25)
 
     status_result = case_status_score(case)
     status_score = status_result["score"]
@@ -654,6 +848,10 @@ def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_ind
         "total": total,
         "grade": grade,
         "dimensions": {
+            "mule_account_risk": {
+                "highest_tier": highest_mule_tier,
+                "accounts": mule_account_risk_details
+            },
             "evidentiary_completeness": {
                 "score": evidentiary_score,
                 "max": 55,
@@ -661,6 +859,7 @@ def score_extraction(case: Dict[str, Any], extracted: Dict[str, Any], threat_ind
             },
             "threat_intelligence": {
                 "score": threat_score,
+                "raw_score": raw_threat_score,
                 "max": 25,
                 "reasons": threat_reasons,
             },
@@ -677,6 +876,7 @@ def ensure_threat_intel_schema(cur) -> None:
         CREATE TABLE IF NOT EXISTS account_cases (
             account_number TEXT NOT NULL,
             case_id TEXT NOT NULL,
+            transfer_amount REAL DEFAULT 0,
             first_seen TEXT,
             last_seen TEXT,
             source TEXT,
@@ -696,6 +896,8 @@ def ensure_threat_intel_schema(cur) -> None:
     for table in ["account_cases", "contact_cases"]:
         cur.execute(f"PRAGMA table_info({table})")
         columns = {row[1] for row in cur.fetchall()}
+        if table == "account_cases" and "transfer_amount" not in columns:
+            cur.execute("ALTER TABLE account_cases ADD COLUMN transfer_amount REAL DEFAULT 0")
         for column in ["first_seen", "last_seen", "source"]:
             if column not in columns:
                 cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
@@ -722,21 +924,23 @@ def ensure_threat_intel_schema(cur) -> None:
 
 def load_threat_indexes_sqlite(db_path: str) -> Dict[str, Dict[str, set]]:
     if not os.path.exists(db_path):
-        return {"accounts": {}, "contacts": {}}
+        return {"accounts": {}, "contacts": {}, "account_amounts": {}}
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.cursor()
         ensure_threat_intel_schema(cur)
         account_cases: Dict[str, set] = {}
         contact_cases: Dict[str, set] = {}
-        for account_number, case_id in cur.execute("SELECT account_number, case_id FROM account_cases"):
+        account_amounts: Dict[str, Dict[str, float]] = {}
+        for account_number, case_id, transfer_amount in cur.execute("SELECT account_number, case_id, transfer_amount FROM account_cases"):
             if account_number and case_id:
                 account_cases.setdefault(account_number, set()).add(case_id)
+                account_amounts.setdefault(account_number, {})[case_id] = float(transfer_amount or 0.0)
         for contact_key, case_id in cur.execute("SELECT contact_key, case_id FROM contact_cases"):
             if contact_key and case_id:
                 contact_cases.setdefault(contact_key, set()).add(case_id)
         conn.commit()
-        return {"accounts": account_cases, "contacts": contact_cases}
+        return {"accounts": account_cases, "contacts": contact_cases, "account_amounts": account_amounts}
     finally:
         conn.close()
 
@@ -752,12 +956,19 @@ def write_threat_intel_sqlite(db_path: str, extractions: List[Dict[str, Any]], s
             for account in scammer_dimensions.get("bank_accounts", []):
                 normalized = normalize_account_number(account.get("account_number"))
                 if normalized:
+                    try:
+                        transfer_amount = float(account.get("transfer_amount") or 0.0)
+                    except (ValueError, TypeError):
+                        transfer_amount = 0.0
                     cur.execute("""
-                        INSERT INTO account_cases (account_number, case_id, first_seen, last_seen, source)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO account_cases (account_number, case_id, transfer_amount, first_seen, last_seen, source)
+                        VALUES (?, ?, ?, ?, ?, ?)
                         ON CONFLICT(account_number, case_id)
-                        DO UPDATE SET last_seen = excluded.last_seen, source = excluded.source
-                    """, (normalized, case_id, now, now, source))
+                        DO UPDATE SET
+                            transfer_amount = excluded.transfer_amount,
+                            last_seen = excluded.last_seen,
+                            source = excluded.source
+                    """, (normalized, case_id, transfer_amount, now, now, source))
             for channel in scammer_dimensions.get("communication_channels", []):
                 normalized = normalize_contact(channel)
                 if normalized:
@@ -1062,7 +1273,11 @@ def relation_agent_node(state: AgentState) -> AgentState:
 
         case_text = case.get("case_ai_summary", "")
         bank_account_enrichment = enrich_bank_account_transfer_amounts(case_text, entities.get("bank_accounts", []))
-        bank_accounts = bank_account_enrichment["bank_accounts"]
+        bank_account_sanitization = sanitize_destination_bank_accounts(
+            bank_account_enrichment["bank_accounts"],
+            case_text,
+        )
+        bank_accounts = bank_account_sanitization["bank_accounts"]
         damage = calculate_damage_amount(case_text, bank_accounts)
         scammer_dimensions = {
             **profile,
@@ -1071,6 +1286,7 @@ def relation_agent_node(state: AgentState) -> AgentState:
             "scammer_names": entities.get("scammer_names", []),
             "bank_accounts": bank_accounts,
             "bank_account_transfer_amount_audit": bank_account_enrichment["bank_account_transfer_amount_audit"],
+            "bank_account_sanitization_audit": bank_account_sanitization["audit"],
             "relations": relation_data.get("relations", []),
         }
         extracted_data = {
@@ -1190,6 +1406,17 @@ def timeline_agent_node(state: AgentState) -> AgentState:
     }
 
     scammer_dimensions = dict(extracted.get("scammer_dimensions", {}))
+    reconciliation = reconcile_bank_accounts_from_timeline(
+        scammer_dimensions.get("bank_accounts", []),
+        timeline.get("events", []),
+    )
+    bank_account_sanitization = sanitize_destination_bank_accounts(
+        reconciliation["bank_accounts"],
+        case.get("case_ai_summary", ""),
+    )
+    scammer_dimensions["bank_accounts"] = bank_account_sanitization["bank_accounts"]
+    scammer_dimensions["bank_account_timeline_reconciliation_audit"] = reconciliation["audit"]
+    scammer_dimensions["bank_account_sanitization_audit"] = bank_account_sanitization["audit"]
     scammer_dimensions["timeline"] = timeline
     updated_extraction = {**extracted, "scammer_dimensions": scammer_dimensions}
 
@@ -1862,17 +2089,79 @@ def route_after_kg_critic(state: AgentState) -> str:
     return "skip"
 
 def kg_skip_node(state: AgentState) -> AgentState:
+    """Commit deterministic core KG even when the LLM assertion overlay is rejected."""
+    idx = state["current_index"]
+    case = state["cases"][idx]
     extracted = state.get("temp_extraction")
     issues = state.get("kg_critic_issues", [])
+    errors = list(state.get("kg_errors", []))
+
     if extracted:
-        extracted["kg_status"] = "plan_failed"
+        kg_plan = extracted.get("kg_plan") or state.get("kg_plan") or build_kg_plan(case, extracted)
+        kg_plan["assertions"] = []
+        kg_plan["critic_status"] = "core_only"
+        kg_plan["core_only_reason"] = "llm_assertion_overlay_rejected"
+        kg_plan["summary"]["assertion_count"] = 0
+        extracted["kg_plan"] = kg_plan
         extracted["kg_critic_issues"] = issues
-    print(f"[KGSkip] Skipping KG write after unresolved critic issues: {len(issues)}")
+
+    print(f"[KGSkip] Writing deterministic core KG after unresolved assertion issues: {len(issues)}")
+
+    if not extracted:
+        return {
+            **state,
+            "temp_extraction": extracted,
+            "kg_status": "core_missing_extraction",
+            "status": "KG Core Missing Extraction",
+        }
+
+    if not kg_enabled():
+        extracted["kg_status"] = "core_disabled"
+        return {
+            **state,
+            "temp_extraction": extracted,
+            "kg_status": "core_disabled",
+            "status": "KG Core Disabled",
+        }
+
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    user = os.getenv("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+
+    try:
+        driver = GraphDatabase.driver(
+            uri,
+            auth=(user, password),
+            connection_timeout=float(os.getenv("NEO4J_TIMEOUT", "5")),
+            max_transaction_retry_time=float(os.getenv("NEO4J_MAX_RETRY_TIME", "3")),
+        )
+        try:
+            with driver.session() as session:
+                counts = session.execute_write(kg_write_case, case, extracted)
+        finally:
+            driver.close()
+        extracted["kg_status"] = "core_written"
+        extracted["kg_summary"] = counts
+        print(f"   => Core KG written: {counts}")
+        return {
+            **state,
+            "temp_extraction": extracted,
+            "kg_status": "core_written",
+            "kg_errors": errors,
+            "status": "KG Core Written",
+        }
+    except Exception as e:
+        error = {"case_id": extracted.get("case_id"), "error": str(e), "mode": "core_only"}
+        errors.append(error)
+        extracted["kg_status"] = "core_failed"
+        extracted["kg_error"] = str(e)
+        print(f"   Core KG write failed: {e}")
     return {
         **state,
         "temp_extraction": extracted,
-        "kg_status": "plan_failed",
-        "status": "KG Plan Failed",
+        "kg_status": "core_failed",
+        "kg_errors": errors,
+        "status": "KG Core Failed",
     }
 
 def kg_agent_node(state: AgentState) -> AgentState:
@@ -1943,6 +2232,15 @@ def save_node(state: AgentState) -> AgentState:
         print(f"⚠️ [System] Saved Case {idx+1} as manual_review.")
     else:
         print(f"⚠️ [System] Skipped Case {idx+1}: no valid extraction after retries.")
+
+    workspace_dir = os.getenv("WORKSPACE_DIR", os.getcwd())
+    partial_output_file = os.path.join(workspace_dir, "extracted_v3.partial.json")
+    try:
+        with open(partial_output_file, "w", encoding="utf-8") as f:
+            json.dump(new_extracted_list, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"⚠️ [System] Failed to write partial output: {e}")
+
     return {
         **state, 
         "extracted_data": new_extracted_list, 
@@ -2075,7 +2373,7 @@ def build_graph():
 if __name__ == "__main__":
     print("Starting Agentic Pipeline V2 (EntityAgent -> ProfileAgent -> RelationAgent)")
     
-    workspace_dir = "/Users/supanus/Desktop/oneforce/extrack_scammer"
+    workspace_dir = os.getenv("WORKSPACE_DIR", os.getcwd())
     input_file = os.path.join(workspace_dir, "latest_case_recordings.json")
     
     try:
@@ -2089,7 +2387,7 @@ if __name__ == "__main__":
         print(f"Loaded {len(cases)} cases.")
         
         case_limit = int(os.getenv("CASE_LIMIT", str(len(cases))))
-        cases_to_process = cases[:case_limit]
+        cases_to_process = cases if case_limit <= 0 else cases[:case_limit]
         print(f"Processing {len(cases_to_process)} cases.")
         
         initial_state = {
@@ -2125,6 +2423,9 @@ if __name__ == "__main__":
         
         output_file = os.path.join(workspace_dir, "extracted_v3.json")
         with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(final_extractions, f, indent=2, ensure_ascii=False)
+        legacy_output_file = os.path.join(workspace_dir, "extracted.json")
+        with open(legacy_output_file, "w", encoding="utf-8") as f:
             json.dump(final_extractions, f, indent=2, ensure_ascii=False)
             
         print(f"\n🎉 Pipeline complete! Saved results to {output_file}")
