@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forensics KG Dashboard</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #697586;
+      --line: #d9dee7;
+      --blue: #1f6feb;
+      --green: #16803c;
+      --red: #b42318;
+      --amber: #a15c00;
+      --ink: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 700;
+    }
+
+    main {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modebar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      flex-wrap: wrap;
+    }
+
+    select, button, input {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    button {
+      cursor: pointer;
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
+      font-weight: 600;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: #fff;
+      border-color: var(--line);
+    }
+
+    a.nav-link {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      min-height: 36px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    button.secondary.active {
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 86px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .metric .value {
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 750;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .panel h2 {
+      margin: 0;
+      padding: 12px 14px;
+      font-size: 15px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: #fbfcfe;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    #graph {
+      height: 620px;
+      width: 100%;
+      background: #fff;
+    }
+
+    .timeline {
+      max-height: 620px;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #edf0f5;
+    }
+
+    .event:last-child { border-bottom: none; }
+
+    .dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .event.transfer .dot { background: var(--green); }
+    .event.refund .dot { background: var(--amber); }
+    .event.report .dot { background: var(--red); }
+
+    .event-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .event-body {
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .tables {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #edf0f5;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfcfe;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .table-wrap {
+      max-height: 410px;
+      overflow: auto;
+    }
+
+    .money {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #1f4fbf;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .muted { color: var(--muted); }
+    .nowrap { white-space: nowrap; }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .brief {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .brief-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .brief-title strong {
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .brief-summary {
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      padding: 4px 8px;
+      border: 1px solid #dbe4f0;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .chip.warn {
+      border-color: #f4c790;
+      background: #fff7ed;
+      color: #9a4b00;
+    }
+
+    .insight-list {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .insight-item {
+      border: 1px solid #edf0f5;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      display: grid;
+      gap: 5px;
+    }
+
+    .insight-item .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 750;
+      color: var(--ink);
+    }
+
+    .insight-item .detail {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .mini-tables {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout, .tables, .insight-grid, .mini-tables { grid-template-columns: 1fr; }
+      #graph { height: 520px; }
+    }
+
+    @media (max-width: 640px) {
+      header { height: auto; align-items: stretch; flex-direction: column; gap: 10px; padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+      main { padding: 12px; }
+      .toolbar { width: 100%; }
+      select, button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Forensics KG Dashboard</h1>
+    <div class="toolbar">
+      <select id="caseSelect" aria-label="Case"></select>
+      <button id="refreshBtn">Open Case</button>
+      <a class="nav-link" href="/extracted">Extracted Details</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="metrics"></section>
+
+    <section class="insight-grid">
+      <div class="panel">
+        <h2>Investigation Insights</h2>
+        <div class="insight-list" id="insightList"></div>
+      </div>
+      <div class="panel">
+        <h2>Case Brief</h2>
+        <div class="brief" id="caseBrief"></div>
+      </div>
+    </section>
+
+    <section class="mini-tables">
+      <div class="panel">
+        <h2>Evidence ที่ใช้ซ้ำ</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ชนิด</th>
+                <th>ค่า</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="sharedRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Scam Pattern ทำเงินสูง</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pattern</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="patternRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>ช่องทางติดต่อซ้ำ</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ช่องทาง</th>
+                <th>คดี</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="contactRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <h2 id="graphTitle">Case Graph</h2>
+        <div class="modebar">
+          <button class="secondary active" data-mode="story">Story</button>
+          <button class="secondary" data-mode="money">Money Flow</button>
+          <button class="secondary" data-mode="analyst">Analyst KG</button>
+          <button class="secondary" data-mode="all">All Graph</button>
+        </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:#1f6feb"></i>Case</span>
+          <span><i class="swatch" style="background:#10b981"></i>Event</span>
+          <span><i class="swatch" style="background:#ef4444"></i>Bank account</span>
+          <span><i class="swatch" style="background:#f59e0b"></i>Person</span>
+          <span><i class="swatch" style="background:#8b5cf6"></i>Assertion</span>
+        </div>
+        <div id="graph"></div>
+      </div>
+      <div class="panel">
+        <h2>Case Timeline</h2>
+        <div class="timeline" id="timeline"></div>
+      </div>
+    </section>
+
+    <section class="tables">
+      <div class="panel">
+        <h2>บัญชีม้า / ปลายทาง</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>เลขบัญชี</th>
+                <th>ชื่อบัญชี</th>
+                <th>ธนาคาร</th>
+                <th>จำนวนคดี</th>
+                <th>ยอดรวม</th>
+              </tr>
+            </thead>
+            <tbody id="muleRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Case Ranking</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Case</th>
+                <th>Damage</th>
+                <th>Score</th>
+                <th>Events</th>
+                <th>Assertions</th>
+              </tr>
+            </thead>
+            <tbody id="caseRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Psychological Tactics</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tactic</th>
+              <th>จำนวนคดี</th>
+            </tr>
+          </thead>
+          <tbody id="tacticRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const graphEl = document.getElementById("graph");
+    const caseSelect = document.getElementById("caseSelect");
+    const metricsEl = document.getElementById("metrics");
+    const timelineEl = document.getElementById("timeline");
+    const graphTitle = document.getElementById("graphTitle");
+    const insightListEl = document.getElementById("insightList");
+    const caseBriefEl = document.getElementById("caseBrief");
+    let network;
+    let cases = [];
+    let currentMode = "story";
+
+    const groups = {
+      Case: { color: { background: "#1f6feb", border: "#124a9c" }, font: { color: "#fff" }, shape: "box" },
+      Victim: { color: "#f97316", shape: "ellipse" },
+      Event: { color: "#10b981", shape: "box" },
+      BankAccount: { color: "#ef4444", font: { color: "#fff" }, shape: "box" },
+      Person: { color: "#f59e0b", shape: "ellipse" },
+      Assertion: { color: "#8b5cf6", font: { color: "#fff" }, shape: "diamond" },
+      Bank: { color: "#64748b", font: { color: "#fff" }, shape: "box" },
+      PsychologicalTactic: { color: "#06b6d4", shape: "box" },
+      ContactChannel: { color: "#84cc16", shape: "box" },
+      ScamType: { color: "#0f766e", font: { color: "#fff" }, shape: "box" },
+      HookPoint: { color: "#a855f7", font: { color: "#fff" }, shape: "box" },
+      EvidenceEntity: { color: "#94a3b8", shape: "ellipse" }
+    };
+
+    async function api(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function money(value) {
+      if (value === null || value === undefined) return "-";
+      return Number(value).toLocaleString("th-TH", { maximumFractionDigits: 2 });
+    }
+
+    function text(value) {
+      if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+      return value || "-";
+    }
+
+    function short(value, max = 54) {
+      const str = text(value);
+      return str.length > max ? `${str.slice(0, max - 1)}…` : str;
+    }
+
+    function renderMetrics(summary) {
+      const items = [
+        ["Cases", summary.cases],
+        ["Events", summary.events],
+        ["Assertions", summary.assertions],
+        ["Damage", money(summary.total_damage)],
+        ["Nodes", summary.nodes],
+        ["Relationships", summary.relationships],
+        ["Bank Accounts", summary.bank_accounts]
+      ];
+      metricsEl.innerHTML = items.map(([label, value]) => `
+        <div class="metric">
+          <div class="label">${label}</div>
+          <div class="value">${value ?? 0}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderCases(rows) {
+      cases = rows;
+      caseSelect.innerHTML = rows.map(row => `
+        <option value="${row.case_id}">${row.case_id.slice(0, 8)} · ${money(row.damage_amount)} บาท</option>
+      `).join("");
+      document.getElementById("caseRows").innerHTML = rows.map(row => `
+        <tr>
+          <td><button class="case-link" data-case="${row.case_id}">${row.case_id.slice(0, 8)}</button></td>
+          <td class="money">${money(row.damage_amount)}</td>
+          <td><span class="pill">${row.confidence_total ?? "-"} ${row.confidence_grade ?? ""}</span></td>
+          <td>${row.event_count}</td>
+          <td>${row.assertion_count}</td>
+        </tr>
+      `).join("");
+      document.querySelectorAll(".case-link").forEach(btn => {
+        btn.addEventListener("click", () => {
+          caseSelect.value = btn.dataset.case;
+          loadCase(btn.dataset.case);
+        });
+      });
+    }
+
+    function renderMules(rows) {
+      document.getElementById("muleRows").innerHTML = rows.map(row => `
+        <tr>
+          <td class="nowrap">${row.account_number || "-"}</td>
+          <td>${text(row.owner_names)}</td>
+          <td>${text(row.banks)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_amount)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderTactics(rows) {
+      document.getElementById("tacticRows").innerHTML = rows.map(row => `
+        <tr>
+          <td>${row.tactic || "-"}</td>
+          <td>${row.case_count}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderInsights(data) {
+      const topAccount = (data.top_accounts || [])[0];
+      const topShared = (data.shared_evidence || [])[0];
+      const topPattern = (data.scam_patterns || [])[0];
+      const topContact = (data.repeated_contacts || [])[0];
+      const items = [
+        topAccount && {
+          title: `บัญชีเสี่ยงสุด: ${topAccount.account_number}`,
+          value: `${topAccount.case_count} คดี · ${money(topAccount.total_amount)} บาท`,
+          detail: `ชื่อบัญชี ${text(topAccount.owner_names)} · ธนาคาร ${text(topAccount.banks)}`
+        },
+        topShared && {
+          title: `Evidence เชื่อมคดีมากสุด: ${topShared.shared_key}`,
+          value: `${topShared.case_count} คดี`,
+          detail: `${topShared.entity_type} เชื่อม damage รวม ${money(topShared.total_damage)} บาท`
+        },
+        topPattern && {
+          title: `Pattern ทำเงินสูงสุด: ${short(topPattern.scam_type)}`,
+          value: `${money(topPattern.total_damage)} บาท`,
+          detail: `${topPattern.case_count} คดี · เฉลี่ย ${money(topPattern.avg_damage)} บาทต่อคดี`
+        },
+        topContact && {
+          title: `ช่องทางติดต่อใช้ซ้ำ: ${short(topContact.contact)}`,
+          value: `${topContact.case_count} คดี`,
+          detail: `${topContact.platform || "contact"} · damage รวม ${money(topContact.total_damage)} บาท`
+        }
+      ].filter(Boolean);
+
+      insightListEl.innerHTML = items.map(item => `
+        <div class="insight-item">
+          <div class="topline"><span>${item.title}</span><span>${item.value}</span></div>
+          <div class="detail">${item.detail}</div>
+        </div>
+      `).join("") || `<div class="muted">ยังไม่มี insight จากกราฟ</div>`;
+
+      document.getElementById("sharedRows").innerHTML = (data.shared_evidence || []).map(row => `
+        <tr>
+          <td>${row.entity_type || "-"}</td>
+          <td>${short(row.shared_key, 34)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("patternRows").innerHTML = (data.scam_patterns || []).map(row => `
+        <tr>
+          <td>${short(row.scam_type, 42)}</td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("contactRows").innerHTML = (data.repeated_contacts || []).map(row => `
+        <tr>
+          <td>${short(row.contact, 42)}<div class="muted">${row.platform || "-"}</div></td>
+          <td>${row.case_count}</td>
+          <td class="money">${money(row.total_damage)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderCaseBrief(row) {
+      const stats = row.timeline_stats || {};
+      const signals = row.risk_signals || {};
+      const accounts = row.accounts || [];
+      const reusedAccounts = signals.reused_accounts || [];
+      const reusedContacts = signals.reused_contacts || [];
+      const accountText = accounts.length
+        ? accounts.slice(0, 3).map(item => `${item.account_number} (${money(item.amount)} บาท)`).join(", ")
+        : "-";
+      caseBriefEl.innerHTML = `
+        <div class="brief-title">
+          <strong>${row.case_id ? row.case_id.slice(0, 8) : "-"}</strong>
+          <span class="pill">${money(row.damage_amount)} บาท</span>
+        </div>
+        <div class="brief-summary">${row.summary || "ไม่มี summary"}</div>
+        <div class="chips">
+          ${(row.scam_types || []).filter(Boolean).map(item => `<span class="chip">${short(item, 32)}</span>`).join("")}
+          ${(row.tactics || []).filter(Boolean).slice(0, 4).map(item => `<span class="chip">${short(item, 32)}</span>`).join("")}
+        </div>
+        <div class="chips">
+          <span class="chip">Transfer ${stats.transfer_count || 0} ครั้ง</span>
+          <span class="chip">รวม ${money(stats.transfer_total)} บาท</span>
+          <span class="chip">Events ${stats.event_count || 0}</span>
+          <span class="chip">Score ${row.confidence_total ?? "-"} ${row.confidence_grade ?? ""}</span>
+        </div>
+        <div class="insight-item">
+          <div class="topline"><span>บัญชีปลายทางในเคสนี้</span><span>${accounts.length} บัญชี</span></div>
+          <div class="detail">${accountText}</div>
+        </div>
+        <div class="insight-item">
+          <div class="topline"><span>สัญญาณเชื่อมคดีอื่น</span><span>${(signals.reused_account_count || 0) + (signals.reused_contact_count || 0)} จุด</span></div>
+          <div class="detail">
+            บัญชีซ้ำ: ${reusedAccounts.map(item => item.account_number).join(", ") || "-"}<br>
+            ช่องทางซ้ำ: ${reusedContacts.map(item => item.contact).join(", ") || "-"}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTimeline(rows) {
+      timelineEl.innerHTML = rows.map(row => {
+        const cls = String(row.event_type || "").toLowerCase();
+        const amount = row.amount ? `<span class="money">${money(row.amount)} บาท</span>` : "";
+        const account = row.destination_account ? `<span class="muted">→ ${row.destination_account}</span>` : "";
+        return `
+          <div class="event ${cls}">
+            <div class="dot">${row.event_order}</div>
+            <div>
+              <div class="event-title">
+                <span>${row.event_type || "EVENT"} ${row.event_time ? "· " + row.event_time : ""}</span>
+                <span>${amount} ${account}</span>
+              </div>
+              <div class="event-body">${row.description || "-"}</div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<div class="muted">No timeline events</div>`;
+    }
+
+    function renderGraph(data, mode = "story") {
+      const nodes = new vis.DataSet(data.nodes || []);
+      const edges = new vis.DataSet(data.edges || []);
+      if (network) network.destroy();
+      const hierarchical = mode === "story" || mode === "money";
+      network = new vis.Network(graphEl, { nodes, edges }, {
+        groups,
+        autoResize: true,
+        layout: hierarchical
+          ? {
+              hierarchical: {
+                enabled: true,
+                direction: "LR",
+                sortMethod: "directed",
+                levelSeparation: mode === "story" ? 155 : 180,
+                nodeSpacing: 120,
+                treeSpacing: 160
+              }
+            }
+          : { improvedLayout: true },
+        physics: {
+          enabled: !hierarchical,
+          stabilization: { iterations: 150 },
+          barnesHut: { gravitationalConstant: -14000, springLength: 140, springConstant: 0.04 }
+        },
+        interaction: { hover: true, tooltipDelay: 120, navigationButtons: true },
+        edges: {
+          font: { size: hierarchical ? 0 : 9, align: "middle" },
+          color: { color: "#94a3b8" },
+          smooth: hierarchical ? { type: "cubicBezier", forceDirection: "horizontal" } : { type: "dynamic" }
+        },
+        nodes: { font: { size: 12, multi: true }, borderWidth: 1, margin: 10, widthConstraint: { maximum: 170 } }
+      });
+    }
+
+    async function loadCase(caseId) {
+      const titleMap = {
+        story: "Story Graph",
+        money: "Money Flow",
+        analyst: "Analyst KG",
+        all: "All Cases Overview"
+      };
+      graphTitle.textContent = currentMode === "all"
+        ? titleMap[currentMode]
+        : `${titleMap[currentMode]} · ${caseId.slice(0, 8)}`;
+      const graphPath = currentMode === "story"
+        ? `/api/case/${caseId}/story-graph`
+        : currentMode === "money"
+          ? `/api/case/${caseId}/money-flow`
+          : currentMode === "analyst"
+            ? `/api/case/${caseId}/graph`
+            : `/api/graph/all`;
+      const [brief, timeline, graph] = await Promise.all([
+        api(`/api/case/${caseId}/brief`),
+        api(`/api/case/${caseId}/timeline`),
+        api(graphPath)
+      ]);
+      renderCaseBrief(brief);
+      renderTimeline(timeline);
+      renderGraph(graph, currentMode);
+    }
+
+    async function init() {
+      const [summary, caseRows, mules, tactics, insights] = await Promise.all([
+        api("/api/summary"),
+        api("/api/cases"),
+        api("/api/mule-accounts"),
+        api("/api/tactics"),
+        api("/api/insights")
+      ]);
+      renderMetrics(summary);
+      renderCases(caseRows);
+      renderMules(mules);
+      renderTactics(tactics);
+      renderInsights(insights);
+      if (caseRows.length) {
+        caseSelect.value = caseRows[0].case_id;
+        await loadCase(caseRows[0].case_id);
+      }
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", () => loadCase(caseSelect.value));
+    document.querySelectorAll("[data-mode]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-mode]").forEach(item => item.classList.remove("active"));
+        btn.classList.add("active");
+        currentMode = btn.dataset.mode;
+        loadCase(caseSelect.value);
+      });
+    });
+    caseSelect.addEventListener("change", () => loadCase(caseSelect.value));
+
+    init().catch(err => {
+      metricsEl.innerHTML = `<div class="metric"><div class="label">Error</div><div class="value" style="font-size:16px;color:#b42318">${err.message}</div></div>`;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

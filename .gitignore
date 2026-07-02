@@ -13,6 +13,10 @@ __pycache__/
 
 # Runtime/generated extraction outputs
 extracted_*.json
+extracted.json
+detected_syndicates.json
+remote_results/
+extracted.html
 run_debug.log
 debug.log
 diagnostics.txt

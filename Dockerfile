@@ -1,11 +1,14 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# First fetch data, then run pipeline, then build KG
-CMD ["sh", "-c", "python query_db.py && python agentic_pipeline.py && python build_kg_forensics.py"]
+# Default worker entrypoint. Dashboard and compose jobs override this when needed.
+CMD ["python", "agentic_pipeline.py"]

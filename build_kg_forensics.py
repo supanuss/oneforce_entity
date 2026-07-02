@@ -140,14 +140,19 @@ class ForensicsKGBuilder:
                     """, acc_num=acc_num, owner_name=owner_name)
 
 
-if __name__ == "__main__":
-    json_path = "extracted_v2.json"
-    
-    if not os.path.exists(json_path):
-        print(f"File {json_path} not found. Please run agentic_pipeline.py first.")
-        exit(1)
+def run_build_kg(input_file: str = None):
+    workspace_dir = os.getenv("WORKSPACE_DIR", os.getcwd())
+    if not input_file:
+        # Prefer extracted_v3.json, fallback to extracted_v2.json
+        v3_path = os.path.join(workspace_dir, "extracted_v3.json")
+        v2_path = os.path.join(workspace_dir, "extracted_v2.json")
+        input_file = v3_path if os.path.exists(v3_path) else v2_path
+
+    if not os.path.exists(input_file):
+        print(f"File {input_file} not found. Please run agentic_pipeline.py first.")
+        return
         
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(input_file, "r", encoding="utf-8") as f:
         data = json.load(f)
         
     builder = ForensicsKGBuilder(NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
@@ -155,7 +160,10 @@ if __name__ == "__main__":
     try:
         print("Clearing old graph...")
         builder.clear_database()
-        print("Building new Forensics-First graph...")
+        print(f"Building new Forensics-First graph from {os.path.basename(input_file)}...")
         builder.build_graph(data)
     finally:
         builder.close()
+
+if __name__ == "__main__":
+    run_build_kg()
