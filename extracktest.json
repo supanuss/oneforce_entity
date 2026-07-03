@@ -1,0 +1,3084 @@
+[
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 41,
+      "age_group": null,
+      "age_group_enum": "35_to_44",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": null,
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "ผู้เสียหายถูกหลอกลวงให้ซื้อตู้เสื้อผ้าเด็กจากเพจ Facebook ปลอม โดยคนร้ายอ้างขายของราคาถูก เมื่อโอนเงินแล้วจึงบ่ายเบี่ยงและปิดกั้นช่องทางติดต่อ ไม่ส่งมอบสินค้าจริง",
+      "hook_point": null,
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [],
+      "psychological_tactics_enum": [],
+      "damage_amount": 6852.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": null,
+          "platform_enum": "facebook",
+          "contact_info": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”"
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": "สรันยู พิมพ์ชันนี",
+          "bank_name": "กรุงศรีอยุธยา",
+          "bank_name_enum": "BBL",
+          "account_number": "00777830816",
+          "transfer_amount": 6852.0,
+          "transfer_date": "26 เมษายน 2569",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "นาย ธัชกร เปฏพันธุ์",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกลวงให้ซื้อตู้เสื้อผ้าเด็กจากเพจ Facebook ปลอม"
+        },
+        {
+          "subject": "นาย ธัชกร เปฏพันธุ์",
+          "predicate": "CONTACTED_VIA",
+          "object": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+          "evidence": "ติดต่อสอบถามรายละเอียดสินค้าผ่านข้อความใน Facebook"
+        },
+        {
+          "subject": "นาย ธัชกร เปฏพันธุ์",
+          "predicate": "TRANSFERRED_TO",
+          "object": "สรันยู พิมพ์ชันนี",
+          "evidence": "โอนเงิน 6,852 บาท ไปยังบัญชีธนาคารกรุงศรีอยุธยา"
+        },
+        {
+          "subject": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+          "predicate": "LURED_BY",
+          "object": "ecommerce_scam",
+          "evidence": "ใช้กลอุบายขายของราคาถูกเพื่อหลอกลวงผู้เสียหาย"
+        },
+        {
+          "subject": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+          "predicate": "REGISTERED_AT",
+          "object": "facebook",
+          "evidence": "เป็นช่องทางติดต่อสื่อสารหลักในคดีนี้"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69ef2f42065eb810830a05fa-narrative-001",
+            "event_order": 1,
+            "event_type": "DISCOVERY",
+            "event_time": null,
+            "description": "ผู้เสียหายพบโฆษณาขายตู้เสื้อผ้าเด็กราคาถูกจากเพจ Facebook ปลอม",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "facebook: เพลตฟอร์ม 'เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน'",
+            "evidence": "ประกาศขายสินค้าในเพจออนไลน์",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ef2f42065eb810830a05fa-narrative-002",
+            "event_order": 2,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "ผู้เสียหายทักข้อความสอบถามรายละเอียดและตกลงซื้อสินค้ากับคนร้าย",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "facebook: การสนทนาในเพจ",
+            "evidence": "การติดต่อสื่อสารเพื่อสั่งซื้อ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ef2f42065eb810830a05fa-narrative-003",
+            "event_order": 3,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายหลอกลวงให้โอนเงินและแจ้งขอเงินเพิ่มหลังจากผู้เสียหายโอนไปแล้ว",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "facebook: การสนทนาในเพจ",
+            "evidence": "การแจ้งเตือนขอให้โอนเงินเพิ่มเติม",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ef2f42065eb810830a05fa-narrative-004",
+            "event_order": 4,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "ผู้เสียหายถูกปิดกั้นช่องทางติดต่อและยกเลิกไม่ได้ จึงรู้ตัวว่าถูกหลอกลวง",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การปิดกั้นช่องทางการติดต่อ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ef2f42065eb810830a05fa-narrative-005",
+            "event_order": 5,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายรวบรวมพยานหลักฐานและเดินทางเข้าแจ้งความร้องทุกข์ต่อพนักงานสอบสวน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การยื่นเรื่องกับเจ้าหน้าที่ตำรวจ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ef2f42065eb810830a05fa-transfer-006",
+            "event_order": 6,
+            "event_type": "TRANSFER",
+            "event_time": "26 เมษายน 2569 21:40",
+            "description": "โอนเงิน 6,852.00 บาท ไปยังบัญชี 00777830816",
+            "amount": 6852.0,
+            "source_account": "3832609793",
+            "source_owner": "นายทัชชกร ประเทพพันธ์",
+            "destination_account": "00777830816",
+            "destination_owner": "สรันยู พิมพ์ชันนี",
+            "evidence": "- ครั้งที่ 1 โอนจากบัญชีธนาคารไทยพาณิชย์ เลขที่บัญชี 3832609793 ชื่อบัญชี นายทัชชกร ประเทพพันธ์ ไปยังบัญชีธนาคารกรุงศรีอยุธยา เลขที่บัญชี 00777830816 ชื่อบัญชี ",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 5,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69ef2f42065eb810830a05fa",
+    "accuser_original": "นาย ธัชกร เปฏพันธุ์",
+    "confidence_score": {
+      "total": 80,
+      "grade": "high",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 2,
+          "accounts": [
+            {
+              "account_number": "00777830816",
+              "tier": 2,
+              "case_occurrences": 1,
+              "transfer_amount": 13704.0,
+              "total_transfer_amount": 13704.0,
+              "reason": "Tier 2 Mule - Found in 1 case(s), Total Amount: 13,704.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 55,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ",
+            "มีชื่อและเลขบัญชีม้าปลายทางชัดเจน"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 15,
+          "raw_score": 15,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ",
+            "พบบัญชีม้าความเสี่ยงปานกลาง (Tier 2: ส้ม)"
+          ]
+        },
+        "case_status": {
+          "score": 10,
+          "max": 20,
+          "reasons": [
+            "มีรายการคดีในระบบและอยู่ในขั้นตอนรับเรื่อง/ตรวจสอบ"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69ef2f42065eb810830a05fa",
+      "version": "kg_plan_v1",
+      "assertions": [
+        {
+          "assertion_id": "69ef2f42065eb810830a05fa-assertion-001",
+          "predicate": "VICTIM_OF",
+          "raw_subject": "นาย ธัชกร เปฏพันธุ์",
+          "raw_object": "ecommerce_scam",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย ธัชกร เปฏพันธุ์",
+            "name": "นาย ธัชกร เปฏพันธุ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69ef2f42065eb810830a05fa:ecommerce_scam",
+            "name": "ecommerce_scam"
+          },
+          "evidence": "ถูกหลอกลวงให้ซื้อตู้เสื้อผ้าเด็กจากเพจ Facebook ปลอม",
+          "source_agent": "RelationAgent",
+          "case_id": "69ef2f42065eb810830a05fa"
+        },
+        {
+          "assertion_id": "69ef2f42065eb810830a05fa-assertion-002",
+          "predicate": "CONTACTED_VIA",
+          "raw_subject": "นาย ธัชกร เปฏพันธุ์",
+          "raw_object": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย ธัชกร เปฏพันธุ์",
+            "name": "นาย ธัชกร เปฏพันธุ์"
+          },
+          "object": {
+            "label": "ContactChannel",
+            "key": "ContactChannel::เพจ facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+            "name": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”"
+          },
+          "evidence": "ติดต่อสอบถามรายละเอียดสินค้าผ่านข้อความใน Facebook",
+          "source_agent": "RelationAgent",
+          "case_id": "69ef2f42065eb810830a05fa"
+        },
+        {
+          "assertion_id": "69ef2f42065eb810830a05fa-assertion-003",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "นาย ธัชกร เปฏพันธุ์",
+          "raw_object": "สรันยู พิมพ์ชันนี",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย ธัชกร เปฏพันธุ์",
+            "name": "นาย ธัชกร เปฏพันธุ์"
+          },
+          "object": {
+            "label": "BankAccount",
+            "key": "BankAccount:00777830816",
+            "name": "00777830816"
+          },
+          "evidence": "โอนเงิน 6,852 บาท ไปยังบัญชีธนาคารกรุงศรีอยุธยา",
+          "source_agent": "RelationAgent",
+          "case_id": "69ef2f42065eb810830a05fa",
+          "repair_action": "mapped_owner_person_to_bank_account"
+        },
+        {
+          "assertion_id": "69ef2f42065eb810830a05fa-assertion-004",
+          "predicate": "LURED_BY",
+          "raw_subject": "เพจ Facebook ชื่อว่า “เฟอร์นิเจอร์ ตู้ เหล็ก ราคา โรง งาน”",
+          "raw_object": "ecommerce_scam",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย ธัชกร เปฏพันธุ์",
+            "name": "นาย ธัชกร เปฏพันธุ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69ef2f42065eb810830a05fa:ecommerce_scam",
+            "name": "ecommerce_scam"
+          },
+          "evidence": "ใช้กลอุบายขายของราคาถูกเพื่อหลอกลวงผู้เสียหาย",
+          "source_agent": "RelationAgent",
+          "case_id": "69ef2f42065eb810830a05fa",
+          "repair_action": "remapped_subject_to_victim"
+        }
+      ],
+      "summary": {
+        "assertion_count": 4,
+        "event_count": 6,
+        "transfer_event_count": 1,
+        "damage_amount": 6852.0
+      },
+      "critic_status": "passed",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 3,
+          "output_assertion_count": 4
+        }
+      ],
+      "critic_issues": []
+    },
+    "kg_status": "written",
+    "kg_summary": {
+      "nodes": 24,
+      "edges": 29,
+      "events": 6,
+      "assertions": 4
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 0,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_30', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 47,
+      "age_group": null,
+      "age_group_enum": "18_to_24",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": "เพจปลอมขายที่พัก/บริการ (Fake Resort Booking Page)",
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "ผู้เสียหายพบเพจ Facebook ปลอมชื่อ 'บ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท' ซึ่งอ้างว่าสามารถจองที่พักได้ ผู้เสียหายจึงติดต่อ Inbox เพื่อสอบถามและตกลงจองที่พัก ก่อนจะโอนเงินค่ามัดจำหรือค่าบริการจำนวน 3,000 บาท เมื่อตรวจสอบภายหลังพบว่าเพจดังกล่าวเป็นบัญชีปลอม จึงแจ้งความดำเนินคดี",
+      "hook_point": "การโฆษณาขายบริการผ่านโซเชียลมีเดียโดยไม่มีตัวตนจริง (Fake Social Media Ad/Post)",
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [
+        "สร้างภาพลักษณ์เพจที่พักหรูเพื่อสร้างความน่าเชื่อถือเบื้องต้น"
+      ],
+      "psychological_tactics_enum": [],
+      "damage_amount": 3000.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "Facebook",
+          "platform_enum": "facebook",
+          "contact_info": "Inbox เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท"
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": "กสิกรไทย",
+          "bank_name_enum": "KBANK",
+          "account_number": "2298795887",
+          "transfer_amount": 3000.0,
+          "transfer_date": "29 เมษายน 2569",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "predicate": "VICTIM_OF",
+          "object": "วิลาสินี ยิ่งดำนุ่น",
+          "evidence": "ผู้เสียหายแจ้งว่าถูกหลอกลวงจากเพจดังกล่าว"
+        },
+        {
+          "subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "predicate": "LURED_BY",
+          "object": "วิลาสินี ยิ่งดำนุ่น",
+          "evidence": "สร้างภาพลักษณ์ที่พักหรูเพื่อหลอกลวง"
+        },
+        {
+          "subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "predicate": "CONTACTED_VIA",
+          "object": "Facebook",
+          "evidence": "ติดต่อผ่าน Inbox เพจบน Facebook"
+        },
+        {
+          "subject": "วิลาสินี ยิ่งดำนุ่น",
+          "predicate": "TRANSFERRED_TO",
+          "object": "บัญชี 2298795887 กสิกรไทย",
+          "evidence": "โอนเงินไปให้คนร้ายจำนวน 3,000 บาท"
+        },
+        {
+          "subject": "วิลาสินี ยิ่งดำนุ่น",
+          "predicate": "OWNED_BY",
+          "object": "นางสาคมาต ทองบริบูรณ์",
+          "evidence": "โอนจากบัญชีชื่อนางสาคมาต ทองบริบูรณ์"
+        },
+        {
+          "subject": "วิลาสินี ยิ่งดำนุ่น",
+          "predicate": "REGISTERED_AT",
+          "object": "9/50 หมู่บ้านกลางเมือง ตำบลบางพาย อำเภอเมือง จังหวัดนนทบุรี",
+          "evidence": "มีภูมิลำเนาและพักอาศัยอยู่ที่จังหวัดนนทบุรี"
+        },
+        {
+          "subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "predicate": "USED_TACTIC",
+          "object": "social_media_ad",
+          "evidence": "การโฆษณาขายบริการผ่านโซเชียลมีเดียโดยไม่มีตัวตนจริง"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-narrative-001",
+            "event_order": 1,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "เหยื่อพบเพจปลอมและติดต่อสอบถามการจองที่พักผ่าน Facebook Inbox โดยไม่รู้ว่าเพจเป็นของมิจฉาชีพ",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook",
+            "evidence": "โพสต์จากบัญชี 'บ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท' และบทสนทนาใน Inbox",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "เพจปลอมสร้างความน่าเชื่อถือด้วยภาพลักษณ์ที่พักหรูจนเหยื่อตกลงโอนเงินจองที่พัก",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การตกลงโอนเงินจำนวน 3,000 บาท",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-narrative-003",
+            "event_order": 3,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "เหยื่อเกิดความสงสัยหลังโอนเงินแล้วจึงค้นหาข้อมูลและพบเพจจริง จึงรู้ว่าถูกหลอกด้วยเพจปลอม",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การค้นพบว่าเพจที่คุยกับมิจฉาชีพไม่ใช่เพจที่พักจริง",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-narrative-004",
+            "event_order": 4,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "เหยื่อโทรแจ้งศูนย์ AOC 1441 เพื่อรายงานเหตุและขออายัดบัญชีคนร้ายทันทีหลังรู้ตัวว่าถูกโกง",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การติดต่อแจ้งความผ่านช่องทางโทรศัพท์",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-narrative-005",
+            "event_order": 5,
+            "event_type": "LEGAL_ACTION",
+            "event_time": null,
+            "description": "เหยื่อเดินทางมาพบพนักงานสอบสวนเพื่อดำเนินคดีและให้ข้อมูลพฤติการณ์ที่ถูกหลอกลวงทั้งหมด",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การมาให้ปากคำต่อหน้าพนักงานสอบสวน",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd5cbe03dae9598b64f0-transfer-006",
+            "event_order": 6,
+            "event_type": "TRANSFER",
+            "event_time": "29 เมษายน 2569 20:30",
+            "description": "โอนเงิน 3,000.00 บาท ไปยังบัญชี 2298795887",
+            "amount": 3000.0,
+            "source_account": "3822583363",
+            "source_owner": "นางสาคมาต ทองบริบูรณ์ เลขที่บัญชี 3822583363",
+            "destination_account": "2298795887",
+            "destination_owner": "นายสุขชัย จันทร์ประเสริฐ เลขที่บัญชี 2298795887",
+            "evidence": "- ครั้งที่ 1 โอนจากบัญชีธนาคารไทยพาณิชย์ ชื่อบัญชี นางสาคมาต ทองบริบูรณ์ เลขที่บัญชี 3822583363 ไปยังบัญชีธนาคารกสิกรไทย ชื่อบัญชี นายสุขชัย จันทร์ประเสริฐ เลขท",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 5,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f1cd5cbe03dae9598b64f0",
+    "accuser_original": "วิลาสินี ยิ่งดำนุ่น",
+    "confidence_score": {
+      "total": 70,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": [
+            {
+              "account_number": "2298795887",
+              "tier": 3,
+              "case_occurrences": 1,
+              "transfer_amount": 6000.0,
+              "total_transfer_amount": 6000.0,
+              "reason": "Tier 3 Mule - Found in 1 case(s), Total Amount: 6,000.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 20,
+          "max": 20,
+          "reasons": [
+            "พบสถานะหรือข้อความที่บ่งชี้ว่ามีการดำเนินงานทางกฎหมายแล้ว"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f1cd5cbe03dae9598b64f0",
+      "version": "kg_plan_v1",
+      "assertions": [
+        {
+          "assertion_id": "69f1cd5cbe03dae9598b64f0-assertion-001",
+          "predicate": "VICTIM_OF",
+          "raw_subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "raw_object": "วิลาสินี ยิ่งดำนุ่น",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:วิลาสินี ยิ่งดำนุ่น",
+            "name": "วิลาสินี ยิ่งดำนุ่น"
+          },
+          "object": {
+            "label": "ScamType",
+            "key": "ScamType:เพจปลอมขายที่พัก/บริการ (Fake Resort Booking Page)",
+            "name": "เพจปลอมขายที่พัก/บริการ (Fake Resort Booking Page)"
+          },
+          "evidence": "ผู้เสียหายแจ้งว่าถูกหลอกลวงจากเพจดังกล่าว",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1cd5cbe03dae9598b64f0",
+          "repair_action": "remapped_victim_of_to_scam_type"
+        },
+        {
+          "assertion_id": "69f1cd5cbe03dae9598b64f0-assertion-002",
+          "predicate": "LURED_BY",
+          "raw_subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "raw_object": "วิลาสินี ยิ่งดำนุ่น",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:วิลาสินี ยิ่งดำนุ่น",
+            "name": "วิลาสินี ยิ่งดำนุ่น"
+          },
+          "object": {
+            "label": "HookPoint",
+            "key": "HookPoint:การโฆษณาขายบริการผ่านโซเชียลมีเดียโดยไม่มีตัวตนจริง (Fake Social Media Ad/Post)",
+            "name": "การโฆษณาขายบริการผ่านโซเชียลมีเดียโดยไม่มีตัวตนจริง (Fake Social Media Ad/Post)"
+          },
+          "evidence": "สร้างภาพลักษณ์ที่พักหรูเพื่อหลอกลวง",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1cd5cbe03dae9598b64f0",
+          "repair_action": "remapped_lured_by_to_hook_point"
+        },
+        {
+          "assertion_id": "69f1cd5cbe03dae9598b64f0-assertion-003",
+          "predicate": "CONTACTED_VIA",
+          "raw_subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "raw_object": "Facebook",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:วิลาสินี ยิ่งดำนุ่น",
+            "name": "วิลาสินี ยิ่งดำนุ่น"
+          },
+          "object": {
+            "label": "ContactChannel",
+            "key": "ContactChannel:facebook:inbox เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+            "name": "Facebook"
+          },
+          "evidence": "ติดต่อผ่าน Inbox เพจบน Facebook",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1cd5cbe03dae9598b64f0",
+          "repair_action": "remapped_subject_to_victim"
+        },
+        {
+          "assertion_id": "69f1cd5cbe03dae9598b64f0-assertion-004",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "วิลาสินี ยิ่งดำนุ่น",
+          "raw_object": "บัญชี 2298795887 กสิกรไทย",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:วิลาสินี ยิ่งดำนุ่น",
+            "name": "วิลาสินี ยิ่งดำนุ่น"
+          },
+          "object": {
+            "label": "BankAccount",
+            "key": "BankAccount:2298795887",
+            "name": "2298795887"
+          },
+          "evidence": "โอนเงินไปให้คนร้ายจำนวน 3,000 บาท",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1cd5cbe03dae9598b64f0"
+        },
+        {
+          "assertion_id": "69f1cd5cbe03dae9598b64f0-assertion-007",
+          "predicate": "USED_TACTIC",
+          "raw_subject": "เพจบ้านรับรองห่านน้ำใส น้ำใสบีทรีสอร์ท",
+          "raw_object": "social_media_ad",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:วิลาสินี ยิ่งดำนุ่น",
+            "name": "วิลาสินี ยิ่งดำนุ่น"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69f1cd5cbe03dae9598b64f0:social_media_ad",
+            "name": "social_media_ad"
+          },
+          "evidence": "การโฆษณาขายบริการผ่านโซเชียลมีเดียโดยไม่มีตัวตนจริง",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1cd5cbe03dae9598b64f0",
+          "repair_action": "remapped_subject_to_victim"
+        }
+      ],
+      "summary": {
+        "assertion_count": 5,
+        "event_count": 6,
+        "transfer_event_count": 1,
+        "damage_amount": 3000.0
+      },
+      "critic_status": "passed",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 6,
+          "output_assertion_count": 5
+        }
+      ],
+      "critic_issues": []
+    },
+    "kg_status": "written",
+    "kg_summary": {
+      "nodes": 29,
+      "edges": 34,
+      "events": 6,
+      "assertions": 5
+    },
+    "review_status": "passed"
+  },
+  {
+    "case_id": "69f2da29b71473012bf4ba28",
+    "accuser_original": "นางสาว สุพิชญา คงคาน้อย",
+    "review_status": "manual_review",
+    "feedback": "EntityAgent Error: JSON schema validation failed: 2 validation errors for EntityExtraction\ncommunication_channels.0.contact_info\n  Input should be a valid string [type=string_type, input_value=['กลุ่ม Hair Pi...cebook D A R I X N Z X'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nbank_accounts.0.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='KTBANK', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum",
+    "error_history": [
+      {
+        "case_index": 2,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 2 validation errors for EntityExtraction\ncommunication_channels.0.contact_info\n  Input should be a valid string [type=string_type, input_value=['กลุ่ม Hair Pi...ชี D A R I X N Z X'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nbank_accounts.0.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='KTBANK', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      },
+      {
+        "case_index": 2,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\ncommunication_channels.0.contact_info\n  Input should be a valid string [type=string_type, input_value=['กลุ่ม Hair Pi...่อ D A R I X N Z X'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+      },
+      {
+        "case_index": 2,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 2 validation errors for EntityExtraction\ncommunication_channels.0.contact_info\n  Input should be a valid string [type=string_type, input_value=['กลุ่ม Hair Pi...cebook D A R I X N Z X'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nbank_accounts.0.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='KTBANK', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ],
+    "confidence_score": {
+      "total": 60,
+      "grade": "review_required",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": []
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 0,
+          "raw_score": 0,
+          "max": 25,
+          "reasons": []
+        },
+        "case_status": {
+          "score": 20,
+          "max": 20,
+          "reasons": [
+            "พบสถานะหรือข้อความที่บ่งชี้ว่ามีการดำเนินงานทางกฎหมายแล้ว"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 30,
+      "age_group": null,
+      "age_group_enum": "25_to_34",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": "หลอกลวงขายสินค้าออนไลน์โดยอ้างค่าประกัน/มัดจำแล้วไม่ส่งของ",
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "ผู้เสียหายถูกหลอกให้โอนเงินซื้อยางรถยนต์ผ่านเพจ Facebook ปลอม โดยคนร้ายใช้ภาพและโปรโมชันที่น่าเชื่อถือเพื่อสร้างความน่าเชื่อถือ จากนั้นเมื่อได้รับเงินแล้วจึงอ้างว่าต้องชำระค่าประกันสินค้าเพิ่มเติม หากไม่จ่ายจะไม่ส่งของ เมื่อผู้เสียหายปฏิเสธการโอนค่าประกัน คนร้ายก็เงียบหายไปและไม่ตอบกลับ",
+      "hook_point": "การสร้างเพจปลอมที่มีรูปภาพและคลิปวิดีโอที่ดูสมจริง พร้อมโปรโมชันล่อใจเพื่อดึงดูดให้เหยื่อหลงเชื่อว่าเป็นร้านค้าจริง",
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [
+        "สร้างความน่าเชื่อถือด้วยสื่อภาพ (รูป/คลิปสินค้า)",
+        "ใช้โปรโมชั่นดึงดูดความสนใจ"
+      ],
+      "psychological_tactics_enum": [],
+      "damage_amount": 5200.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "Facebook",
+          "platform_enum": "facebook",
+          "contact_info": "T Trie AutoPart จำหน่ายยางรถยนต์"
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": "กสิกรไทย",
+          "bank_name_enum": "KBANK",
+          "account_number": "2302787215",
+          "transfer_amount": 5200.0,
+          "transfer_date": "29 เมษายน 2569",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "ชิษณุพงศ์ อิ่มคำ",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกลวงซื้อยางรถยนต์ผ่านเพจปลอม"
+        },
+        {
+          "subject": "ชิษณุพงศ์ อิ่มคำ",
+          "predicate": "CONTACTED_VIA",
+          "object": "Facebook",
+          "evidence": "ติดต่อคนร้ายผ่านแชทใน Facebook"
+        },
+        {
+          "subject": "เพจ T Trie AutoPart จำหน่ายยางรถยนต์",
+          "predicate": "LURED_BY",
+          "object": "social_media_ad",
+          "evidence": "ใช้ภาพและโปรโมชันล่อใจให้หลงเชื่อ"
+        },
+        {
+          "subject": "ชิษณุพงศ์ อิ่มคำ",
+          "predicate": "TRANSFERRED_TO",
+          "object": "กสิกรไทย",
+          "evidence": "โอนเงิน 5,200 บาท ไปบัญชี KBANK"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f1c2084f03b3810128a354-narrative-001",
+            "event_order": 1,
+            "event_type": "DISCOVERY",
+            "event_time": null,
+            "description": "ผู้เสียหายพบเพจ Facebook ปลอมชื่อ 'T Trie AutoPart' ที่โพสต์คลิปและภาพยางรถยนต์ดูสมจริงพร้อมโปรโมชันล่อใจ",
+            "amount": null,
+            "related_tactic": "สร้างความน่าเชื่อถือด้วยสื่อภาพ (รูป/คลิปสินค้า)",
+            "related_channel": "Facebook",
+            "evidence": "เพจ Facebook ปลอมที่มีรูปภาพและวิดีโอสินค้า",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1c2084f03b3810128a354-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "ผู้เสียหายตกลงซื้อยางรถยนต์หลังจากได้รับรายละเอียด ยี่ห้อ และโปรโมชันจากเพจปลอม",
+            "amount": null,
+            "related_tactic": "ใช้โปรโมชั่นดึงดูดความสนใจ",
+            "related_channel": "Facebook Messenger",
+            "evidence": "การสนทนาและข้อตกลงในการสั่งซื้อสินค้า",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1c2084f03b3810128a354-narrative-003",
+            "event_order": 3,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "เพจปลอมอ้างต้องชำระค่าประกันเพิ่มอีก 2,000 บาท แต่เมื่อผู้เสียหายไม่โอนและไม่ได้รับของก็ถูกหลอก",
+            "amount": null,
+            "related_tactic": "เรียกเก็บค่าธรรมเนียมเพิ่มเติมเพื่อปิดปากหรือข่มเหงเหยื่อ",
+            "related_channel": null,
+            "evidence": "ข้อความแจ้งต้องชำระค่าประกันสินค้า",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1c2084f03b3810128a354-transfer-004",
+            "event_order": 4,
+            "event_type": "TRANSFER",
+            "event_time": "29 เมษายน 2569 14:01",
+            "description": "โอนเงิน 5,200.00 บาท ไปยังบัญชี 2302787215",
+            "amount": 5200.0,
+            "source_account": "1471669650",
+            "source_owner": "นายชิษณุพงษ์ อิ่มคำ เลขที่บัญชี 1471669650",
+            "destination_account": "2302787215",
+            "destination_owner": "นางสาวอธิตญา จันทวดี เลขที่บัญชี 2302787215",
+            "evidence": "</p><p>ข้าฯ โอนเงินไปให้คนร้ายจำนวนทั้งหมด 1 ครั้ง</p><p>- ครั้งที่ 1 โอนจากบัญชีธนาคารกรุงศรีอยุธยา ชื่อบัญชี นายชิษณุพงษ์ อิ่มคำ เลขที่บัญชี 1471669650 ไปยังบ",
+            "source": "deterministic_transfer_parser"
+          },
+          {
+            "event_id": "69f1c2084f03b3810128a354-report-005",
+            "event_order": 5,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายมาพบพนักงานสอบสวนหรือแจ้งความ",
+            "amount": null,
+            "evidence": "พบพนักงานสอบสวน/แจ้งความ",
+            "source": "deterministic_keyword_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 3,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f1c2084f03b3810128a354",
+    "accuser_original": "ชิษณุพงศ์ อิ่มคำ",
+    "confidence_score": {
+      "total": 65,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 2,
+          "accounts": [
+            {
+              "account_number": "2302787215",
+              "tier": 2,
+              "case_occurrences": 1,
+              "transfer_amount": 10400.0,
+              "total_transfer_amount": 10400.0,
+              "reason": "Tier 2 Mule - Found in 1 case(s), Total Amount: 10,400.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 15,
+          "raw_score": 15,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ",
+            "พบบัญชีม้าความเสี่ยงปานกลาง (Tier 2: ส้ม)"
+          ]
+        },
+        "case_status": {
+          "score": 10,
+          "max": 20,
+          "reasons": [
+            "มีรายการคดีในระบบและอยู่ในขั้นตอนรับเรื่อง/ตรวจสอบ"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f1c2084f03b3810128a354",
+      "version": "kg_plan_v1",
+      "assertions": [
+        {
+          "assertion_id": "69f1c2084f03b3810128a354-assertion-001",
+          "predicate": "VICTIM_OF",
+          "raw_subject": "ชิษณุพงศ์ อิ่มคำ",
+          "raw_object": "ecommerce_scam",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:ชิษณุพงศ์ อิ่มคำ",
+            "name": "ชิษณุพงศ์ อิ่มคำ"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69f1c2084f03b3810128a354:ecommerce_scam",
+            "name": "ecommerce_scam"
+          },
+          "evidence": "ถูกหลอกลวงซื้อยางรถยนต์ผ่านเพจปลอม",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1c2084f03b3810128a354"
+        },
+        {
+          "assertion_id": "69f1c2084f03b3810128a354-assertion-002",
+          "predicate": "CONTACTED_VIA",
+          "raw_subject": "ชิษณุพงศ์ อิ่มคำ",
+          "raw_object": "Facebook",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:ชิษณุพงศ์ อิ่มคำ",
+            "name": "ชิษณุพงศ์ อิ่มคำ"
+          },
+          "object": {
+            "label": "ContactChannel",
+            "key": "ContactChannel:facebook:t trie autopart จำหน่ายยางรถยนต์",
+            "name": "Facebook"
+          },
+          "evidence": "ติดต่อคนร้ายผ่านแชทใน Facebook",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1c2084f03b3810128a354"
+        },
+        {
+          "assertion_id": "69f1c2084f03b3810128a354-assertion-003",
+          "predicate": "LURED_BY",
+          "raw_subject": "เพจ T Trie AutoPart จำหน่ายยางรถยนต์",
+          "raw_object": "social_media_ad",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:ชิษณุพงศ์ อิ่มคำ",
+            "name": "ชิษณุพงศ์ อิ่มคำ"
+          },
+          "object": {
+            "label": "HookPoint",
+            "key": "HookPoint:การสร้างเพจปลอมที่มีรูปภาพและคลิปวิดีโอที่ดูสมจริง พร้อมโปรโมชันล่อใจเพื่อดึงดูดให้เหยื่อหลงเชื่อว่าเป็นร้านค้าจริง",
+            "name": "การสร้างเพจปลอมที่มีรูปภาพและคลิปวิดีโอที่ดูสมจริง พร้อมโปรโมชันล่อใจเพื่อดึงดูดให้เหยื่อหลงเชื่อว่าเป็นร้านค้าจริง"
+          },
+          "evidence": "ใช้ภาพและโปรโมชันล่อใจให้หลงเชื่อ",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1c2084f03b3810128a354",
+          "repair_action": "remapped_lured_by_to_hook_point"
+        },
+        {
+          "assertion_id": "69f1c2084f03b3810128a354-assertion-004",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "ชิษณุพงศ์ อิ่มคำ",
+          "raw_object": "กสิกรไทย",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:ชิษณุพงศ์ อิ่มคำ",
+            "name": "ชิษณุพงศ์ อิ่มคำ"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69f1c2084f03b3810128a354:กสิกรไทย",
+            "name": "กสิกรไทย"
+          },
+          "evidence": "โอนเงิน 5,200 บาท ไปบัญชี KBANK",
+          "source_agent": "RelationAgent",
+          "case_id": "69f1c2084f03b3810128a354"
+        }
+      ],
+      "summary": {
+        "assertion_count": 4,
+        "event_count": 5,
+        "transfer_event_count": 1,
+        "damage_amount": 5200.0
+      },
+      "critic_status": "passed",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 1,
+          "output_assertion_count": 4
+        }
+      ],
+      "critic_issues": []
+    },
+    "kg_status": "written",
+    "kg_summary": {
+      "nodes": 26,
+      "edges": 30,
+      "events": 5,
+      "assertions": 4
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 3,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_49', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 32,
+      "age_group": null,
+      "age_group_enum": "18_to_24",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": "หลอกลวงขายสินค้าออนไลน์ (ยางรถยนต์) และเรียกเก็บค่ารับประกันเพิ่มเติมหลังโอนเงินแล้ว",
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "ผู้เสียหายถูกมิจฉาชีพโพสต์ขายยางรถยนต์ผ่าน Facebook โดยตกลงซื้อขายและโอนเงินจำนวน 1,600 บาท แต่หลังจากนั้นคนร้ายยังเรียกร้องให้โอนเงินเพิ่มเป็นค่ารับประกันสินค้า ทำให้ผู้เสียหายสงสัยว่าถูกหลอกลวง",
+      "hook_point": "การโฆษณาขายของปลอมหรือไม่มีตัวตนบนโซเชียลมีเดีย และการอ้างเหตุผลเพิ่มเติมเช่น ค่าประกัน/ค่าส่งหลังได้รับเงินแล้ว",
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [
+        "สร้างความน่าเชื่อถือด้วยการโพสต์สินค้าจริง (ยางรถยนต์)",
+        "ใช้ความเร่งรีบและโอกาสในการซื้อขายออนไลน์เพื่อลดการตรวจสอบ"
+      ],
+      "psychological_tactics_enum": [],
+      "damage_amount": 1600.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "Facebook",
+          "platform_enum": "facebook",
+          "contact_info": null
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": [
+          {
+            "account_number": "0014777008493602",
+            "reason": "invalid_or_partial_account_number"
+          }
+        ]
+      },
+      "relations": [
+        {
+          "subject": "บุญเลิศ แซ่เถา",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกลวงขายยางรถยนต์และเรียกเก็บค่ารับประกัน"
+        },
+        {
+          "subject": "AOTE SIRIPONG",
+          "predicate": "LURED_BY",
+          "object": "บุญเลิศ แซ่เถา",
+          "evidence": "โพสต์ขายยางรถยนต์ผ่าน Facebook และติดต่อซื้อขาย"
+        },
+        {
+          "subject": "เด็กชายอนุปัทร จันทชิต",
+          "predicate": "OWNED_BY",
+          "object": "TrueMoney Wallet",
+          "evidence": "เจ้าของบัญชี TrueMoney Wallet เลขที่ 0014777008493602"
+        },
+        {
+          "subject": "บุญเลิศ แซ่เถา",
+          "predicate": "TRANSFERRED_TO",
+          "object": "เด็กชายอนุปัทร จันทชิต",
+          "evidence": "โอนเงิน 1,600 บาท ไปยังบัญชี TrueMoney Wallet"
+        },
+        {
+          "subject": "บุญเลิศ แซ่เถา",
+          "predicate": "REGISTERED_AT",
+          "object": "Facebook",
+          "evidence": "ใช้ Facebook ติดต่อกับคนร้ายและโพสต์ขายของ"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [
+          "0014777008493602"
+        ],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-001",
+            "event_order": 1,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "เหยื่อพบผู้ใช้งาน Facebook ชื่อ AOTE SIRIPONG โพสต์ขายยางรถยนต์และตกลงซื้อขายกัน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook",
+            "evidence": "การโพสต์ขายสินค้าและการติดต่อสอบถามผ่านคอมเมนต์/อินบ็อกซ์",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายหลอกลวงให้เหยื่อโอนเงินค่าสินค้ายางรถยนต์จำนวน 1,600 บาทผ่าน TrueMoney Wallet",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "TrueMoney Wallet",
+            "evidence": "ยอดโอนทั้งหมด 1 ครั้ง รวม 1,600 บาท",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-003",
+            "event_order": 3,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "หลังโอนเงินแล้ว คนร้ายอ้างว่าต้องโอนเงินเพิ่มเป็นค่ารับประกันสินค้า ทำให้เหยื่อสงสัยว่าเป็นมิจฉาชีพ",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook",
+            "evidence": "ข้อความแจ้งให้โอนเงินเพิ่มเติมในส่วนของค่ารับประกัน",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-004",
+            "event_order": 4,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "เหยื่อค้นคว้าข้อมูลและเชื่อว่าตนเองถูกหลอกลวงจากแก๊งมิจฉาชีพ จึงหยุดการโอนทันที",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "ความสงสัยและการหาข้อมูลเพิ่มเติมจนสรุปว่าเป็นการกระทำผิด",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-005",
+            "event_order": 5,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "เหยื่อโทรแจ้งศูนย์รับแจ้งเหตุอาชญากรรมทางเทคโนโลยีหมายเลข 1441 และเดินทางเข้าให้ปากคำพนักงานสอบสวน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การติดต่อเจ้าหน้าที่และมอบเอกสารหลักฐานประกอบคดี",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-narrative-006",
+            "event_order": 6,
+            "event_type": "LEGAL_ACTION",
+            "event_time": null,
+            "description": "เหยื่อร้องขอให้ดำเนินการอายัดบัญชีคนร้ายเพื่อดำเนินคดีตามกฎหมายจนกว่าจะถึงที่สุด",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "คำร้องขอให้อายัดบัญชีและดำเนินคดีต่อพนักงานสอบสวน",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f1cd2ebe03dae9598b64ed-transfer-007",
+            "event_order": 7,
+            "event_type": "TRANSFER",
+            "event_time": "24 เมษายน 2569 17:06",
+            "description": "โอนเงิน 1,600.00 บาท ไปยังบัญชี 0014777008493602",
+            "amount": 1600.0,
+            "source_account": "3990551140",
+            "source_owner": "นายบุญเลิศ แซ่เถา",
+            "destination_account": "0014777008493602",
+            "destination_owner": "เด็กชายอนุปัทร จันทชิต",
+            "evidence": "- ครั้งที่ 1 โอนจากบัญชีธนาคารกรุงไทย เลขที่บัญชี 3990551140 ชื่อบัญชี นายบุญเลิศ แซ่เถา ไปยังบัญชี TrueMoney Wallet เลขที่บัญชี 0014777008493602 ชื่อบัญชี เด็ก",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 6,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f1cd2ebe03dae9598b64ed",
+    "accuser_original": "บุญเลิศ แซ่เถา",
+    "confidence_score": {
+      "total": 70,
+      "grade": "review_required",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": []
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 20,
+          "max": 20,
+          "reasons": [
+            "พบสถานะหรือข้อความที่บ่งชี้ว่ามีการดำเนินงานทางกฎหมายแล้ว"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f1cd2ebe03dae9598b64ed",
+      "version": "kg_plan_v1",
+      "assertions": [],
+      "summary": {
+        "assertion_count": 0,
+        "event_count": 7,
+        "transfer_event_count": 1,
+        "damage_amount": 1600.0
+      },
+      "critic_status": "core_only",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 4,
+          "output_assertion_count": 3
+        },
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 1,
+          "output_assertion_count": 3
+        }
+      ],
+      "critic_issues": [
+        {
+          "severity": "error",
+          "code": "unknown_transfer_account",
+          "message": "TransferEvent destination_account 0014777008493602 is not in bank_accounts",
+          "event_id": "69f1cd2ebe03dae9598b64ed-transfer-007"
+        }
+      ],
+      "core_only_reason": "llm_assertion_overlay_rejected"
+    },
+    "kg_critic_issues": [
+      {
+        "severity": "error",
+        "code": "unknown_transfer_account",
+        "message": "TransferEvent destination_account 0014777008493602 is not in bank_accounts",
+        "event_id": "69f1cd2ebe03dae9598b64ed-transfer-007"
+      }
+    ],
+    "kg_status": "core_written",
+    "kg_summary": {
+      "nodes": 13,
+      "edges": 19,
+      "events": 7,
+      "assertions": 0
+    },
+    "review_status": "manual_review",
+    "error_history": [
+      {
+        "case_index": 4,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nbank_accounts.0.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='TRUEMONEY_WALLET', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      },
+      {
+        "case_index": 4,
+        "source": "timeline",
+        "feedback": "TransferEvent มีบัญชีปลายทางที่ไม่อยู่ใน bank_accounts: 0014777008493602"
+      },
+      {
+        "case_index": 4,
+        "source": "timeline",
+        "feedback": "TransferEvent มีบัญชีปลายทางที่ไม่อยู่ใน bank_accounts: 0014777008493602"
+      },
+      {
+        "case_index": 4,
+        "source": "timeline",
+        "feedback": "TransferEvent มีบัญชีปลายทางที่ไม่อยู่ใน bank_accounts: 0014777008493602"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "female",
+      "age": 63,
+      "age_group": null,
+      "age_group_enum": "55_to_64",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": null,
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": null,
+      "hook_point": null,
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [],
+      "psychological_tactics_enum": [],
+      "damage_amount": 479770.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 3,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": null,
+          "platform_enum": "phone_call",
+          "contact_info": "094-706-7154"
+        },
+        {
+          "platform": null,
+          "platform_enum": "line",
+          "contact_info": "PEA Thailand"
+        }
+      ],
+      "scammer_names": [
+        "นางสาว จารุวรรณ ผุ่ยสุดา",
+        "บุญห่อ พุ่มประยูร",
+        "นาย นพดล รุ่งเรือง"
+      ],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": null,
+          "bank_name_enum": "PROMPTPAY",
+          "account_number": "073119619994319",
+          "transfer_amount": 49980.0,
+          "transfer_date": "2569-04-30",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        },
+        {
+          "owner_name": null,
+          "bank_name": null,
+          "bank_name_enum": "PROMPTPAY",
+          "account_number": "130126032000168",
+          "transfer_amount": 29990.0,
+          "transfer_date": "2569-04-30",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        },
+        {
+          "owner_name": null,
+          "bank_name": null,
+          "bank_name_enum": "SCB",
+          "account_number": "4231987736",
+          "transfer_amount": 399800.0,
+          "transfer_date": "2569-04-30",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 3,
+        "matched_account_count": 3
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกให้โอนเงินผ่าน LINE อ้างเป็นเจ้าหน้าที่การไฟฟ้า"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "CONTACTED_VIA",
+          "object": "094-706-7154",
+          "evidence": "คนร้ายโทรเข้ามาอ้างเป็นเจ้าหน้าที่การไฟฟ้า"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "CONTACTED_VIA",
+          "object": "PEA Thailand",
+          "evidence": "ถูกให้แอด LINE ชื่อบัญชี PEA Thailand"
+        },
+        {
+          "subject": "นางสาว จารุวรรณ ผุ่ยสุดา",
+          "predicate": "LURED_BY",
+          "object": "ณัชชา ภคณัฐสุภานี",
+          "evidence": "หลอกให้โอนเงิน 49,980 บาท ผ่านพร้อมเพย์"
+        },
+        {
+          "subject": "บุญห่อ พุ่มประยูร",
+          "predicate": "LURED_BY",
+          "object": "ณัชชา ภคณัฐสุภานี",
+          "evidence": "หลอกให้โอนเงิน 29,990 บาท ผ่านพร้อมเพย์"
+        },
+        {
+          "subject": "นาย นพดล รุ่งเรือง",
+          "predicate": "LURED_BY",
+          "object": "ณัชชา ภคณัฐสุภานี",
+          "evidence": "หลอกให้โอนเงิน 399,800 บาท ผ่านไทยพาณิชย์"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "TRANSFERRED_TO",
+          "object": "PROMPTPAY:073119619994319",
+          "evidence": "โอนเงิน 49,980 บาท ไปยังบัญชีพร้อมเพย์"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "TRANSFERRED_TO",
+          "object": "PROMPTPAY:130126032000168",
+          "evidence": "โอนเงิน 29,990 บาท ไปยังบัญชีพร้อมเพย์"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "TRANSFERRED_TO",
+          "object": "SCB:4231987736",
+          "evidence": "โอนเงิน 399,800 บาท ไปยังบัญชีไทยพาณิชย์"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "OWNED_BY",
+          "object": "SCB:4160953040",
+          "evidence": "เงินต้นถูกโอนออกจากบัญชีไทยพาณิชย์"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "OWNED_BY",
+          "object": "KASIKORN:00281640181",
+          "evidence": "เงินต้นถูกโอนออกจากบัญชีกสิกรไทย"
+        },
+        {
+          "subject": "ณัชชา ภคณัฐสุภานี",
+          "predicate": "REGISTERED_AT",
+          "object": "นนทบุรี",
+          "evidence": "พักอาศัยอยู่ที่ จ.นนทบุรี หมู่บ้านบางบัวทอง 2"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-narrative-001",
+            "event_order": 1,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "ผู้เสียหายติดต่อกับคนร้ายผ่านโทรศัพท์และ LINE เพื่อสอบถามข้อมูลส่วนตัว",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "phone_call,line",
+            "evidence": "เบอร์โทร 094-706-7154 และชื่อไลน์ PEA Thailand",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายหลอกลวงให้ผู้เสียหายโอนเงินไปจำนวน 3 ครั้งจนได้รับเงินทั้งหมด",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "ยอดรวมโอน 479,770 บาท",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-narrative-003",
+            "event_order": 3,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "ผู้เสียหายตรวจสอบบัญชีและสอบถามญาติแล้วพบว่าเงินถูกโอนไปโดยไม่รู้ตัว จึงรู้ว่าถูกลวง",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การตรวจสอบแอปพลิเคชันบัญชีและการแจ้งความร้องทุกข์",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-narrative-004",
+            "event_order": 4,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายโทรแจ้งศูนย์ AOC 1441 เพื่อทำรายการอายัดบัญชีและมาพบพนักงานสอบสวน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การยื่นคำร้องทุกข์ต่อพนักงานสอบสวน",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-transfer-005",
+            "event_order": 5,
+            "event_type": "TRANSFER",
+            "event_time": "30 เมษายน 2569 09:41",
+            "description": "โอนเงิน 49,980.00 บาท ไปยังบัญชี 073119619994319",
+            "amount": 49980.0,
+            "source_account": "4160953040",
+            "source_owner": "นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 4160953040",
+            "destination_account": "073119619994319",
+            "destination_owner": "นางสาว จารุวรรณ ผุ่ยสุดา เลขที่บัญชี 073119619994319",
+            "evidence": "ครั้งที่ 1 โอนจากบัญชีธนาคารไทยพาณิชย์ ชื่อบัญชี นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 4160953040 ไปยังบัญชีธนาคารพร้อมเพย์ ชื่อบัญชี นางสาว จารุวรรณ ผุ่ยสุดา เลขท",
+            "source": "deterministic_transfer_parser"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-transfer-006",
+            "event_order": 6,
+            "event_type": "TRANSFER",
+            "event_time": "30 เมษายน 2569 09:47",
+            "description": "โอนเงิน 29,990.00 บาท ไปยังบัญชี 130126032000168",
+            "amount": 29990.0,
+            "source_account": "4160953040",
+            "source_owner": "นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 4160953040",
+            "destination_account": "130126032000168",
+            "destination_owner": "บุญห่อ พุ่มประยูร เลขที่บัญชี 130126032000168",
+            "evidence": "ครั้งที่ 2 โอนจากบัญชีธนาคารไทยพาณิชย์ ชื่อบัญชี นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 4160953040 ไปยังบัญชีธนาคารพร้อมเพย์ ชื่อบัญชี บุญห่อ พุ่มประยูร เลขที่บัญชี",
+            "source": "deterministic_transfer_parser"
+          },
+          {
+            "event_id": "69f2f3108572e9ae2208e9a2-transfer-007",
+            "event_order": 7,
+            "event_type": "TRANSFER",
+            "event_time": "30 เมษายน 2569 09:55",
+            "description": "โอนเงิน 399,800.00 บาท ไปยังบัญชี 4231987736",
+            "amount": 399800.0,
+            "source_account": "00281640181",
+            "source_owner": "นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 00281640181",
+            "destination_account": "4231987736",
+            "destination_owner": "นาย นพดล รุ่งเรือง เลขที่บัญชี 4231987736",
+            "evidence": "ครั้งที่ 3 โอนจากบัญชีธนาคารกสิกรไทย ชื่อบัญชี นาง ณัฐชา พักคณัสุพานี เลขที่บัญชี 00281640181 ไปยังบัญชีธนาคารไทยพาณิชย์ ชื่อบัญชี นาย นพดล รุ่งเรือง เลขที่บัญช",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 3,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 4,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f2f3108572e9ae2208e9a2",
+    "accuser_original": "ณัชชา ภคณัฐสุภานี",
+    "confidence_score": {
+      "total": 85,
+      "grade": "high",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 1,
+          "accounts": [
+            {
+              "account_number": "073119619994319",
+              "tier": 2,
+              "case_occurrences": 1,
+              "transfer_amount": 99960.0,
+              "total_transfer_amount": 99960.0,
+              "reason": "Tier 2 Mule - Found in 1 case(s), Total Amount: 99,960.00 THB"
+            },
+            {
+              "account_number": "130126032000168",
+              "tier": 2,
+              "case_occurrences": 1,
+              "transfer_amount": 59980.0,
+              "total_transfer_amount": 59980.0,
+              "reason": "Tier 2 Mule - Found in 1 case(s), Total Amount: 59,980.00 THB"
+            },
+            {
+              "account_number": "4231987736",
+              "tier": 1,
+              "case_occurrences": 1,
+              "transfer_amount": 799600.0,
+              "total_transfer_amount": 799600.0,
+              "reason": "Tier 1 Mule - Found in 1 case(s), Total Amount: 799,600.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 25,
+          "raw_score": 25,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ",
+            "พบบัญชีม้าความเสี่ยงสูง (Tier 1: แดง)"
+          ]
+        },
+        "case_status": {
+          "score": 20,
+          "max": 20,
+          "reasons": [
+            "พบสถานะหรือข้อความที่บ่งชี้ว่ามีการดำเนินงานทางกฎหมายแล้ว"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f2f3108572e9ae2208e9a2",
+      "version": "kg_plan_v1",
+      "assertions": [],
+      "summary": {
+        "assertion_count": 0,
+        "event_count": 7,
+        "transfer_event_count": 3,
+        "damage_amount": 479770.0
+      },
+      "critic_status": "core_only",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 6,
+          "output_assertion_count": 9
+        },
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 3,
+          "output_assertion_count": 9
+        }
+      ],
+      "critic_issues": [
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+          "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-004",
+          "repair_hint": "review_semantic_mapping"
+        },
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+          "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-005",
+          "repair_hint": "review_semantic_mapping"
+        },
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+          "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-006",
+          "repair_hint": "review_semantic_mapping"
+        }
+      ],
+      "core_only_reason": "llm_assertion_overlay_rejected"
+    },
+    "kg_critic_issues": [
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+        "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-004",
+        "repair_hint": "review_semantic_mapping"
+      },
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+        "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-005",
+        "repair_hint": "review_semantic_mapping"
+      },
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+        "assertion_id": "69f2f3108572e9ae2208e9a2-assertion-006",
+        "repair_hint": "review_semantic_mapping"
+      }
+    ],
+    "kg_status": "core_written",
+    "kg_summary": {
+      "nodes": 14,
+      "edges": 22,
+      "events": 7,
+      "assertions": 0
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 5,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 4 validation errors for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum\ncommunication_channels.1.platform_enum\n  Input should be 'facebook', 'line', 'instagram', 'tiktok', 'telegram', 'phone_call', 'sms', 'website', 'dating_app' or 'other' [type=enum, input_value='phone', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum\nbank_accounts.1.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='PROMPAY', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum\nbank_accounts.2.bank_name_enum\n  Input should be 'KBANK', 'SCB', 'BBL', 'KTB', 'BAY', 'TTB', 'GSB', 'BAAC', 'GHB', 'CIMBT', 'UOBT', 'TISCO', 'KKP', 'LHFG', 'ISLAMIC', 'TRUE_MONEY', 'PROMPTPAY' or 'OTHER' [type=enum, input_value='PROMPAY', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 48,
+      "age_group": null,
+      "age_group_enum": "45_to_54",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": null,
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "ผู้เสียหายถูกหลอกลวงให้จองที่พักผ่านเพจ Facebook ปลอม โดยคนร้ายอ้างว่าต้องโอนเงินเพิ่มเป็นค่าประกันหลังจากโอนครั้งแรกแล้ว แต่บ่ายเบี่ยงที่จะคืนเงินเมื่อผู้เสียหายสงสัย",
+      "hook_point": null,
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [],
+      "psychological_tactics_enum": [],
+      "damage_amount": 1980.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "Facebook",
+          "platform_enum": "facebook",
+          "contact_info": "เพจ Facebook ชื่อว่า เดย์เมอร์รีสอร์ท ที่พักบุฟเฟ่ต์ทะเลเผา"
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": "กรุงศรีอยุธยา",
+          "bank_name_enum": "BBL",
+          "account_number": "0077830954",
+          "transfer_amount": 1980.0,
+          "transfer_date": "26 เมษายน 2569",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกลวงให้จองที่พักผ่านเพจ Facebook ปลอม"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "CONTACTED_VIA",
+          "object": "Facebook: เดย์เมอร์รีสอร์ท ที่พักบุฟเฟ่ต์ทะเลเผา",
+          "evidence": "พบโฆษณาและติดต่อผ่านเพจ Facebook"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "LURED_BY",
+          "object": "Facebook: เดย์เมอร์รีสอร์ท ที่พักบุฟเฟ่ต์ทะเลเผา",
+          "evidence": "คนร้ายใช้เพจปลอมหลอกลวงให้โอนเงิน"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "TRANSFERRED_TO",
+          "object": "บัญชีธนาคารกรุงศรีอยุธยา 007-7-83095-4",
+          "evidence": "โอนเงินไปให้คนร้ายจำนวน 1,980 บาท"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "OWNED_BY",
+          "object": "พลอยไพลิน มาคะมงคล",
+          "evidence": "โอนเงินไปยังชื่อบัญชี พลอยไพลิน"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "REGISTERED_AT",
+          "object": "บ้านเลขที่ 79/414 หมู่ 10 ตำบลบางแม่นาง อำเภอบางใหญ่ จังหวัดนนทบุรี",
+          "evidence": "พักอาศัยและเกิดเหตุที่บ้านดังกล่าว"
+        },
+        {
+          "subject": "นาย ประคอง คำนวนดี",
+          "predicate": "USED_TACTIC",
+          "object": "อ้างค่าประกันที่พัก 50%",
+          "evidence": "หลอกให้โอนเพิ่มเป็นค่าประกันแล้วบ่ายเบี่ยงคืนเงิน"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69ee311397309ba8d295c888-narrative-001",
+            "event_order": 1,
+            "event_type": "DISCOVERY",
+            "event_time": null,
+            "description": "ผู้เสียหายพบโฆษณาเพจ Facebook ปลอมชื่อ 'เดย์เมอร์รีสอร์ท' และสนใจรายละเอียดที่พัก",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook",
+            "evidence": "ข้อความสอบถามและตกลงจองที่พัก",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ee311397309ba8d295c888-narrative-002",
+            "event_order": 2,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "ผู้เสียหายทักแชทกับเพจปลอมเพื่อขอรายละเอียดเพิ่มเติมก่อนชำระเงิน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook Messenger",
+            "evidence": "การสนทนาสอบถามราคาและเงื่อนไข",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ee311397309ba8d295c888-narrative-003",
+            "event_order": 3,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายแจ้งช่องทางการชำระเงินผ่าน Mobile Banking และหลอกลวงให้โอนเงินเพื่อจองที่พัก",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook Messenger",
+            "evidence": "คำสั่งโอนเงินและข้อมูลบัญชีรับ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ee311397309ba8d295c888-narrative-004",
+            "event_order": 4,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "ผู้เสียหายตระหนักว่าถูกหลอกลวงหลังจากพยายามโอนเงินเพิ่มเติมแต่ไม่สามารถทำได้",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "ความล้มเหลวในการโอนเพิ่มและการตรวจสอบเพจ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ee311397309ba8d295c888-narrative-005",
+            "event_order": 5,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายเดินทางมาพบพนักงานสอบสวนเพื่อแจ้งเหตุและมอบหลักฐานการถูกหลอกลวง",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "คำให้การและการยื่นเอกสารประกอบคดี",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69ee311397309ba8d295c888-transfer-006",
+            "event_order": 6,
+            "event_type": "TRANSFER",
+            "event_time": "26 เมษายน 2569 21:18",
+            "description": "โอนเงิน 1,980.00 บาท ไปยังบัญชี 0077830954",
+            "amount": 1980.0,
+            "source_account": "7820031921",
+            "source_owner": "นายประคอง คำนวณดี",
+            "destination_account": "0077830954",
+            "destination_owner": "พลอยไพลิน มาคะมงคล",
+            "evidence": "- ครั้งที่ 1 โอนจากบัญชีธนาคารกสิกรไทย เลขที่บัญชี 782-0-03192-1 ชื่อบัญชี นายประคอง คำนวณดี ไปยังบัญชีธนาคารกรุงศรีอยุธยา เลขที่บัญชี 007-7-83095-4 ชื่อบัญชี พ",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 5,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69ee311397309ba8d295c888",
+    "accuser_original": "นาย ประคอง คำนวนดี",
+    "confidence_score": {
+      "total": 60,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": [
+            {
+              "account_number": "0077830954",
+              "tier": 3,
+              "case_occurrences": 1,
+              "transfer_amount": 3960.0,
+              "total_transfer_amount": 3960.0,
+              "reason": "Tier 3 Mule - Found in 1 case(s), Total Amount: 3,960.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 10,
+          "max": 20,
+          "reasons": [
+            "มีรายการคดีในระบบและอยู่ในขั้นตอนรับเรื่อง/ตรวจสอบ"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69ee311397309ba8d295c888",
+      "version": "kg_plan_v1",
+      "assertions": [],
+      "summary": {
+        "assertion_count": 0,
+        "event_count": 6,
+        "transfer_event_count": 1,
+        "damage_amount": 1980.0
+      },
+      "critic_status": "core_only",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 3,
+          "output_assertion_count": 5
+        },
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 1,
+          "output_assertion_count": 5
+        }
+      ],
+      "critic_issues": [
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->ContactChannel",
+          "assertion_id": "69ee311397309ba8d295c888-assertion-003",
+          "repair_hint": "review_semantic_mapping"
+        }
+      ],
+      "core_only_reason": "llm_assertion_overlay_rejected"
+    },
+    "kg_critic_issues": [
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->ContactChannel",
+        "assertion_id": "69ee311397309ba8d295c888-assertion-003",
+        "repair_hint": "review_semantic_mapping"
+      }
+    ],
+    "kg_status": "core_written",
+    "kg_summary": {
+      "nodes": 11,
+      "edges": 16,
+      "events": 6,
+      "assertions": 0
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 6,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_30', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 34,
+      "age_group": null,
+      "age_group_enum": "25_to_34",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": null,
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": "มิจฉาชีพโพสต์ขายอาหารทะเลผ่าน TikTok ชักชวนให้ติดต่อซื้อขายทาง LINE หลอกลวงให้ผู้เสียหายโอนเงินค่าสินค้าแล้วอ้างว่าต้องชำระเพิ่มเป็นค่าลงทะเบียนขนส่งและประกันการขนส่งซึ่งไม่มีจริง",
+      "hook_point": null,
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [
+        "สร้างสถานการณ์ให้หลงเชื่อด้วยราคาอาหารทะเลที่เหมาะสมผ่านโซเชียลมีเดีย",
+        "หลอกลวงด้วยการอ้างว่าต้องชำระค่าเพิ่มเป็นค่าลงทะเบียนขนส่งและประกันการขนส่งหลังจากโอนเงินครั้งแรกไปแล้ว"
+      ],
+      "psychological_tactics_enum": [],
+      "damage_amount": 3380.0,
+      "damage_amount_audit": {
+        "method": "sum_raw_case_transfer_lines",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "TikTok",
+          "platform_enum": "tiktok",
+          "contact_info": "@USER5721874181118"
+        },
+        {
+          "platform": "LINE",
+          "platform_enum": "line",
+          "contact_info": "@186NQMQS"
+        }
+      ],
+      "scammer_names": [
+        "อาหารทะเลสด ทะเลซีฟู้ด @USER5721874181118",
+        "แอดมินทะเลสดซีฟู้ด @186NQMQS"
+      ],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": "กสิกรไทย",
+          "bank_name_enum": "KBANK",
+          "account_number": "2153626432",
+          "transfer_amount": 3380.0,
+          "transfer_date": "2026-04-30",
+          "transfer_amount_audit": {
+            "method": "sum_raw_case_transfer_lines_by_destination_account",
+            "status": "calculated",
+            "transfer_count": 1
+          }
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "calculated",
+        "raw_transfer_count": 1,
+        "matched_account_count": 1
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "@USER5721874181118",
+          "predicate": "LURED_BY",
+          "object": "กาญจน์พศ วังสองชั้น",
+          "evidence": "ชักชวนให้ติดต่อซื้อขายทาง LINE หลอกลวง"
+        },
+        {
+          "subject": "@USER5721874181118",
+          "predicate": "CONTACTED_VIA",
+          "object": "TikTok",
+          "evidence": "พบเห็นโพสต์ประกาศขายสินค้าอาหารทะเลจากบัญชี TikTok"
+        },
+        {
+          "subject": "@USER5721874181118",
+          "predicate": "CONTACTED_VIA",
+          "object": "LINE",
+          "evidence": "ชักชวนให้ข้าฯ เข้าสู่ระบบ LINE ชื่อบัญชี แอดมินทะเลสดซีฟู้ด"
+        },
+        {
+          "subject": "@USER5721874181118",
+          "predicate": "USED_TACTIC",
+          "object": "อ้างค่าลงทะเบียนขนส่งและประกันการขนส่งซึ่งไม่มีจริง",
+          "evidence": "หลอกลวงด้วยการอ้างว่าต้องชำระค่าเพิ่มเป็นค่าลงทะเบียน"
+        },
+        {
+          "subject": "@186NQMQS",
+          "predicate": "LURED_BY",
+          "object": "กาญจน์พศ วังสองชั้น",
+          "evidence": "ชักชวนให้ข้าฯ เข้าสู่ระบบ LINE ชื่อบัญชี แอดมินทะเลสดซีฟู้ด"
+        },
+        {
+          "subject": "@186NQMQS",
+          "predicate": "CONTACTED_VIA",
+          "object": "LINE",
+          "evidence": "ทำการเพิ่มเพื่อนใน LINE เพื่อพูดคุยกับบุคคลดังกล่าว"
+        },
+        {
+          "subject": "กาญจน์พศ วังสองชั้น",
+          "predicate": "TRANSFERRED_TO",
+          "object": "@186NQMQS",
+          "evidence": "โอนเงินไปให้คนร้ายจำนวนทั้งหมด 1 ครั้ง"
+        },
+        {
+          "subject": "กาญจน์พศ วังสองชั้น",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกมิจฉาชีพหลอกลวงให้โอนเงินค่าอาหารทะเลจนได้รับความเสียหาย"
+        },
+        {
+          "subject": "@186NQMQS",
+          "predicate": "OWNED_BY",
+          "object": "ทินกร เลศักดิ์",
+          "evidence": "โอนไปยังบัญชีธนาคารกสิกรไทย ชื่อบัญชี ทินกร เลศักดิ์"
+        },
+        {
+          "subject": "@186NQMQS",
+          "predicate": "REGISTERED_AT",
+          "object": "KBANK",
+          "evidence": "โอนเงินไปให้คนร้ายไปยังบัญชีธนาคารกสิกรไทย"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-001",
+            "event_order": 1,
+            "event_type": "DISCOVERY",
+            "event_time": null,
+            "description": "ผู้เสียหายพบเห็นโพสต์ขายอาหารทะเลใน TikTok และตัดสินใจคอมเมนต์สอบถามสินค้า",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "TikTok",
+            "evidence": "@USER5721874181118",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายชักชวนให้เพิ่มเพื่อนใน LINE เพื่อพูดคุยและตกลงสั่งซื้อสินค้าอาหารทะเล",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "LINE",
+            "evidence": "@186NQMQS",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-003",
+            "event_order": 3,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "หลอกลวงให้โอนเงินค่าอาหารทะเลครั้งแรกโดยอ้างว่าเป็นราคาที่เหมาะสม",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "ยอดโอน 3,380 บาท",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-004",
+            "event_order": 4,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "หลอกลวงให้โอนเงินเพิ่มโดยอ้างว่าเป็นค่าลงทะเบียนขนส่งและประกันการขนส่งหลังจากโอนเงินแรกแล้ว",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "คำขอโอนเพิ่มเติม",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-005",
+            "event_order": 5,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "ผู้เสียหายสงสัยว่าเป็นกลโกงเมื่อถูกขอให้โอนเงินเพิ่มเรื่อยๆ จึงสอบถามแฟนและหยุดการโอนเงิน",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "คำยืนยันจากนางสาวรัศมียา ศิริลักษณ์",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-narrative-006",
+            "event_order": 6,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายโทรแจ้งศูนย์ AOC และเดินทางเข้าพบพนักงานสอบสวนเพื่อดำเนินคดี",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การยื่นคำร้องและพยานบุคคล",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f2cf2c2ac2bc5f770bbfaa-transfer-007",
+            "event_order": 7,
+            "event_type": "TRANSFER",
+            "event_time": "30 เมษายน 2569 09:41",
+            "description": "โอนเงิน 3,380.00 บาท ไปยังบัญชี 2153626432",
+            "amount": 3380.0,
+            "source_account": "0940522261",
+            "source_owner": "การพจน์ วังสองชั้น",
+            "destination_account": "2153626432",
+            "destination_owner": "ทินกร เลศักดิ์",
+            "evidence": "- ครั้งที่ 1 โอนจากบัญชีธนาคารกรุงเทพ เลขที่บัญชี 0940522261 ชื่อบัญชี การพจน์ วังสองชั้น ไปยังบัญชีธนาคารกสิกรไทย เลขที่บัญชี 2153626432 ชื่อบัญชี ทินกร เลศักด",
+            "source": "deterministic_transfer_parser"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 1,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 6,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f2cf2c2ac2bc5f770bbfaa",
+    "accuser_original": "กาญจน์พศ วังสองชั้น",
+    "confidence_score": {
+      "total": 60,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": [
+            {
+              "account_number": "2153626432",
+              "tier": 3,
+              "case_occurrences": 1,
+              "transfer_amount": 6760.0,
+              "total_transfer_amount": 6760.0,
+              "reason": "Tier 3 Mule - Found in 1 case(s), Total Amount: 6,760.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 10,
+          "max": 20,
+          "reasons": [
+            "มีรายการคดีในระบบและอยู่ในขั้นตอนรับเรื่อง/ตรวจสอบ"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f2cf2c2ac2bc5f770bbfaa",
+      "version": "kg_plan_v1",
+      "assertions": [],
+      "summary": {
+        "assertion_count": 0,
+        "event_count": 7,
+        "transfer_event_count": 1,
+        "damage_amount": 3380.0
+      },
+      "critic_status": "core_only",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 9,
+          "output_assertion_count": 7
+        },
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 2,
+          "output_assertion_count": 7
+        }
+      ],
+      "critic_issues": [
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+          "assertion_id": "69f2cf2c2ac2bc5f770bbfaa-assertion-001",
+          "repair_hint": "review_semantic_mapping"
+        },
+        {
+          "severity": "repairable",
+          "code": "predicate_direction_mismatch",
+          "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+          "assertion_id": "69f2cf2c2ac2bc5f770bbfaa-assertion-005",
+          "repair_hint": "review_semantic_mapping"
+        }
+      ],
+      "core_only_reason": "llm_assertion_overlay_rejected"
+    },
+    "kg_critic_issues": [
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+        "assertion_id": "69f2cf2c2ac2bc5f770bbfaa-assertion-001",
+        "repair_hint": "review_semantic_mapping"
+      },
+      {
+        "severity": "repairable",
+        "code": "predicate_direction_mismatch",
+        "message": "LURED_BY expected Victim->['EvidenceEntity', 'HookPoint'], got Victim->Victim",
+        "assertion_id": "69f2cf2c2ac2bc5f770bbfaa-assertion-005",
+        "repair_hint": "review_semantic_mapping"
+      }
+    ],
+    "kg_status": "core_written",
+    "kg_summary": {
+      "nodes": 15,
+      "edges": 21,
+      "events": 7,
+      "assertions": 0
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 7,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_30', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "male",
+      "age": 39,
+      "age_group": null,
+      "age_group_enum": "35_to_44",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": null,
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": null,
+      "hook_point": null,
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [],
+      "psychological_tactics_enum": [],
+      "damage_amount": 1500.0,
+      "damage_amount_audit": {
+        "method": "fallback_sum_bank_accounts_transfer_amount",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "Facebook Page",
+          "platform_enum": "facebook",
+          "contact_info": "Jack Auto Part"
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": null,
+          "bank_name": "กสิกรไทย",
+          "bank_name_enum": "KBANK",
+          "account_number": "2132755089",
+          "transfer_amount": 1500.0,
+          "transfer_date": "20 เมษายน 2569"
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "no_transfer_lines",
+        "raw_transfer_count": 0,
+        "matched_account_count": 0
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกมิจฉาชีพหลอกลวงให้ซื้ออะไหล่รถจักรยานยนต์จากเพจเฟซบุ๊กปลอม"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "CONTACTED_VIA",
+          "object": "Facebook Page: Jack Auto Part",
+          "evidence": "พบเห็นเพจเฟซบุ๊กของคนร้ายใช้ชื่อว่า Jack Auto Part"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "OWNED_BY",
+          "object": "ธนาคารไทยพาณิชย์",
+          "evidence": "โอนเงินจากบัญชีธนาคารไทยพาณิชย์ ชื่อบัญชี นายกิตติคุณ วีระรักษ์"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "TRANSFERRED_TO",
+          "object": "เด็กหญิงยุพาภรณ์ กลางเมือง",
+          "evidence": "โอนเงินไปยังบัญชีธนาคารกสิกรไทย ชื่อบัญชี เด็กหญิงยุพาภรณ์ กลางเมือง"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "TRANSFERRED_TO",
+          "object": "ธนาคารกสิกรไทย",
+          "evidence": "โอนเงินไปยังบัญชีธนาคารกสิกรไทย เลขที่ 2132755089"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "LIVED_AT",
+          "object": "189/44 ตำบลศาลากลาง อำเภอบางกรวย จังหวัดนนทบุรี",
+          "evidence": "พักอาศัยอยู่ที่ 189/44 ตำบลศาลากลาง อำเภอบางกรวย จังหวัดนนทบุรี"
+        },
+        {
+          "subject": "นาย กิตกุล วีระบริรักษ์",
+          "predicate": "USED_TACTIC",
+          "object": "social_media_ad",
+          "evidence": "คนร้ายประกาศโฆษณาขายอะไหล่รถจักรยานยนต์ต่างๆ ผ่านเพจเฟซบุ๊ก"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69eed4d9d4048fe9f6226637-narrative-001",
+            "event_order": 1,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "เหยื่อพบเพจเฟซบุ๊กปลอมชื่อ Jack Auto Part ที่โฆษณาขายอะไหล่รถจักรยานยนต์",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "Facebook Page: Jack Auto Part",
+            "evidence": "การประกาศโฆษณาและทักข้อความสอบถามรายละเอียด",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69eed4d9d4048fe9f6226637-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายหลอกลวงให้เหยื่อตกลงซื้อขายอะไหล่รถจักรยานยนต์และส่งเงินค่าสินค้า",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การโอนเงินจำนวน 1,500 บาท",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69eed4d9d4048fe9f6226637-narrative-003",
+            "event_order": 3,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "เหยื่อตรวจสอบเลขที่พัสดุที่ได้รับแจ้งว่าไม่พบสินค้า จึงทราบว่าถูกหลอกลวง",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การตรวจสอบสถานะพัสดุแล้วไม่พบ",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69eed4d9d4048fe9f6226637-narrative-004",
+            "event_order": 4,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "เหยื่อรวบรวมพยานหลักฐานมาแจ้งความร้องทุกข์ต่อพนักงานสอบสวนเพื่อดำเนินคดี",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "คำให้การและพยานหลักฐานการหลอกลวง",
+            "source": "llm_narrative_timeline_agent"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 0,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 4,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69eed4d9d4048fe9f6226637",
+    "accuser_original": "นาย กิตกุล วีระบริรักษ์",
+    "confidence_score": {
+      "total": 70,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": [
+            {
+              "account_number": "2132755089",
+              "tier": 3,
+              "case_occurrences": 1,
+              "transfer_amount": 3000.0,
+              "total_transfer_amount": 3000.0,
+              "reason": "Tier 3 Mule - Found in 1 case(s), Total Amount: 3,000.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 40,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 20,
+          "max": 20,
+          "reasons": [
+            "พบสถานะหรือข้อความที่บ่งชี้ว่ามีการดำเนินงานทางกฎหมายแล้ว"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69eed4d9d4048fe9f6226637",
+      "version": "kg_plan_v1",
+      "assertions": [
+        {
+          "assertion_id": "69eed4d9d4048fe9f6226637-assertion-001",
+          "predicate": "VICTIM_OF",
+          "raw_subject": "นาย กิตกุล วีระบริรักษ์",
+          "raw_object": "ecommerce_scam",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย กิตกุล วีระบริรักษ์",
+            "name": "นาย กิตกุล วีระบริรักษ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69eed4d9d4048fe9f6226637:ecommerce_scam",
+            "name": "ecommerce_scam"
+          },
+          "evidence": "ถูกมิจฉาชีพหลอกลวงให้ซื้ออะไหล่รถจักรยานยนต์จากเพจเฟซบุ๊กปลอม",
+          "source_agent": "RelationAgent",
+          "case_id": "69eed4d9d4048fe9f6226637"
+        },
+        {
+          "assertion_id": "69eed4d9d4048fe9f6226637-assertion-002",
+          "predicate": "CONTACTED_VIA",
+          "raw_subject": "นาย กิตกุล วีระบริรักษ์",
+          "raw_object": "Facebook Page: Jack Auto Part",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย กิตกุล วีระบริรักษ์",
+            "name": "นาย กิตกุล วีระบริรักษ์"
+          },
+          "object": {
+            "label": "ContactChannel",
+            "key": "ContactChannel:facebook page:jack auto part",
+            "name": "Facebook Page"
+          },
+          "evidence": "พบเห็นเพจเฟซบุ๊กของคนร้ายใช้ชื่อว่า Jack Auto Part",
+          "source_agent": "RelationAgent",
+          "case_id": "69eed4d9d4048fe9f6226637"
+        },
+        {
+          "assertion_id": "69eed4d9d4048fe9f6226637-assertion-004",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "นาย กิตกุล วีระบริรักษ์",
+          "raw_object": "เด็กหญิงยุพาภรณ์ กลางเมือง",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย กิตกุล วีระบริรักษ์",
+            "name": "นาย กิตกุล วีระบริรักษ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69eed4d9d4048fe9f6226637:เด็กหญิงยุพาภรณ์ กลางเมือง",
+            "name": "เด็กหญิงยุพาภรณ์ กลางเมือง"
+          },
+          "evidence": "โอนเงินไปยังบัญชีธนาคารกสิกรไทย ชื่อบัญชี เด็กหญิงยุพาภรณ์ กลางเมือง",
+          "source_agent": "RelationAgent",
+          "case_id": "69eed4d9d4048fe9f6226637"
+        },
+        {
+          "assertion_id": "69eed4d9d4048fe9f6226637-assertion-005",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "นาย กิตกุล วีระบริรักษ์",
+          "raw_object": "ธนาคารกสิกรไทย",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย กิตกุล วีระบริรักษ์",
+            "name": "นาย กิตกุล วีระบริรักษ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69eed4d9d4048fe9f6226637:ธนาคารกสิกรไทย",
+            "name": "ธนาคารกสิกรไทย"
+          },
+          "evidence": "โอนเงินไปยังบัญชีธนาคารกสิกรไทย เลขที่ 2132755089",
+          "source_agent": "RelationAgent",
+          "case_id": "69eed4d9d4048fe9f6226637"
+        },
+        {
+          "assertion_id": "69eed4d9d4048fe9f6226637-assertion-007",
+          "predicate": "USED_TACTIC",
+          "raw_subject": "นาย กิตกุล วีระบริรักษ์",
+          "raw_object": "social_media_ad",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นาย กิตกุล วีระบริรักษ์",
+            "name": "นาย กิตกุล วีระบริรักษ์"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69eed4d9d4048fe9f6226637:social_media_ad",
+            "name": "social_media_ad"
+          },
+          "evidence": "คนร้ายประกาศโฆษณาขายอะไหล่รถจักรยานยนต์ต่างๆ ผ่านเพจเฟซบุ๊ก",
+          "source_agent": "RelationAgent",
+          "case_id": "69eed4d9d4048fe9f6226637"
+        }
+      ],
+      "summary": {
+        "assertion_count": 5,
+        "event_count": 4,
+        "transfer_event_count": 0,
+        "damage_amount": 1500.0
+      },
+      "critic_status": "passed",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 2,
+          "output_assertion_count": 5
+        }
+      ],
+      "critic_issues": []
+    },
+    "kg_status": "written",
+    "kg_summary": {
+      "nodes": 24,
+      "edges": 26,
+      "events": 4,
+      "assertions": 5
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 8,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_40', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  },
+  {
+    "victim_demographics": {
+      "gender": null,
+      "gender_enum": "unknown",
+      "age": 41,
+      "age_group": null,
+      "age_group_enum": "35_to_44",
+      "province": "นนทบุรี",
+      "region": null
+    },
+    "scammer_dimensions": {
+      "attack_type": "หลอกลวงให้โอนเงินเพื่อจองที่ชาร์จแบตเตอรี่รถยนต์",
+      "attack_type_enum": "ecommerce_scam",
+      "scam_summary": null,
+      "hook_point": "การติดต่อผ่านแอปพลิเคชัน LINE เพื่อทำการจองสินค้าและบริการ",
+      "hook_point_enum": "social_media_ad",
+      "psychological_tactics": [],
+      "psychological_tactics_enum": [],
+      "damage_amount": 2850.0,
+      "damage_amount_audit": {
+        "method": "fallback_sum_bank_accounts_transfer_amount",
+        "status": "calculated",
+        "transfer_count": 1,
+        "missing_or_invalid_transfer_amount_count": 0
+      },
+      "communication_channels": [
+        {
+          "platform": "LINE",
+          "platform_enum": "line",
+          "contact_info": null
+        }
+      ],
+      "scammer_names": [],
+      "bank_accounts": [
+        {
+          "owner_name": "นางประภา",
+          "bank_name": "ไทยพาณิชย์",
+          "bank_name_enum": "SCB",
+          "account_number": "4024328476",
+          "transfer_amount": 2850.0,
+          "transfer_date": "2024-04-22"
+        }
+      ],
+      "bank_account_transfer_amount_audit": {
+        "method": "sum_raw_case_transfer_lines_by_destination_account",
+        "status": "no_transfer_lines",
+        "raw_transfer_count": 0,
+        "matched_account_count": 0
+      },
+      "bank_account_sanitization_audit": {
+        "method": "sanitize_destination_bank_accounts",
+        "dropped_accounts": []
+      },
+      "relations": [
+        {
+          "subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "predicate": "VICTIM_OF",
+          "object": "ecommerce_scam",
+          "evidence": "ถูกหลอกลวงให้โอนเงินเพื่อจองที่ชาร์จแบตเตอรี่รถยนต์"
+        },
+        {
+          "subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "predicate": "CONTACTED_VIA",
+          "object": "LINE",
+          "evidence": "ติดต่อคนร้ายผ่านแอปพลิเคชัน LINE"
+        },
+        {
+          "subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "predicate": "TRANSFERRED_TO",
+          "object": "นายวิทยะ ปทุมมี",
+          "evidence": "โอนเงิน 2,850 บาท ไปยัง PromptPay ของนายวิทยะ"
+        },
+        {
+          "subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "predicate": "OWNED_BY",
+          "object": "ไทยพาณิชย์",
+          "evidence": "โอนเงินจากบัญชีธนาคารไทยพาณิชย์ของข้าฯ"
+        }
+      ],
+      "bank_account_timeline_reconciliation_audit": {
+        "method": "reconcile_bank_accounts_from_timeline",
+        "added_account_numbers": [],
+        "updated_account_numbers": []
+      },
+      "timeline": {
+        "events": [
+          {
+            "event_id": "69f09f92f85a94cefb7c387a-narrative-001",
+            "event_order": 1,
+            "event_type": "CONTACT",
+            "event_time": null,
+            "description": "ผู้เสียหายใช้งานแอปพลิเคชัน LINE เพื่อติดต่อกับคนร้ายเพื่อทำการจองที่ชาร์จแบตเตอรี่รถยนต์",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": "LINE",
+            "evidence": "ข้อความสนทนาผ่าน LINE",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f09f92f85a94cefb7c387a-narrative-002",
+            "event_order": 2,
+            "event_type": "PERSUASION",
+            "event_time": null,
+            "description": "คนร้ายหลอกลวงให้โอนเงินเพื่อจองสินค้า โดยตกลงช่องทางการชำระเงินและทำให้ผู้เสียหายหลงเชื่อ",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การตกลงโอนเงินผ่านระบบ Mobile Banking",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f09f92f85a94cefb7c387a-narrative-003",
+            "event_order": 3,
+            "event_type": "REALIZATION",
+            "event_time": null,
+            "description": "ผู้เสียหายทราบว่าถูกหลอกลวงหลังจากโอนเงินแล้วแต่ไม่สามารถติดต่อคนร้ายได้อีกต่อไป",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การสูญเสียช่องทางติดต่อกับคนร้าย",
+            "source": "llm_narrative_timeline_agent"
+          },
+          {
+            "event_id": "69f09f92f85a94cefb7c387a-narrative-004",
+            "event_order": 4,
+            "event_type": "REPORT",
+            "event_time": null,
+            "description": "ผู้เสียหายรวบรวมพยานหลักฐานและมาพบพนักงานสอบสวนเพื่อร้องทุกข์ดำเนินคดีตามกฎหมาย",
+            "amount": null,
+            "related_tactic": null,
+            "related_channel": null,
+            "evidence": "การยื่นคำร้องทุกข์ต่อพนักงานสอบสวน",
+            "source": "llm_narrative_timeline_agent"
+          }
+        ],
+        "audit": {
+          "transfer_event_count": 0,
+          "refund_event_count": 0,
+          "method": "deterministic_timeline_parser",
+          "narrative_event_count": 4,
+          "narrative_status": "calculated",
+          "narrative_error": null
+        }
+      }
+    },
+    "case_id": "69f09f92f85a94cefb7c387a",
+    "accuser_original": "นางสาว พรกิตตา นิธินันท์บภา",
+    "confidence_score": {
+      "total": 75,
+      "grade": "medium",
+      "dimensions": {
+        "mule_account_risk": {
+          "highest_tier": 3,
+          "accounts": [
+            {
+              "account_number": "4024328476",
+              "tier": 3,
+              "case_occurrences": 1,
+              "transfer_amount": 5700.0,
+              "total_transfer_amount": 5700.0,
+              "reason": "Tier 3 Mule - Found in 1 case(s), Total Amount: 5,700.00 THB"
+            }
+          ]
+        },
+        "evidentiary_completeness": {
+          "score": 55,
+          "max": 55,
+          "reasons": [
+            "มีบันทึกปากคำเป็นทางการในระบบ",
+            "มีไฟล์เสียงบันทึกการสอบปากคำ",
+            "มีชื่อและเลขบัญชีม้าปลายทางชัดเจน"
+          ]
+        },
+        "threat_intelligence": {
+          "score": 10,
+          "raw_score": 10,
+          "max": 25,
+          "reasons": [
+            "มีข้อมูลช่องทางการติดต่อสื่อสารของมิจฉาชีพ"
+          ]
+        },
+        "case_status": {
+          "score": 10,
+          "max": 20,
+          "reasons": [
+            "มีรายการคดีในระบบและอยู่ในขั้นตอนรับเรื่อง/ตรวจสอบ"
+          ]
+        }
+      }
+    },
+    "kg_plan": {
+      "case_id": "69f09f92f85a94cefb7c387a",
+      "version": "kg_plan_v1",
+      "assertions": [
+        {
+          "assertion_id": "69f09f92f85a94cefb7c387a-assertion-001",
+          "predicate": "VICTIM_OF",
+          "raw_subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "raw_object": "ecommerce_scam",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นางสาว พรกิตตา นิธินันท์บภา",
+            "name": "นางสาว พรกิตตา นิธินันท์บภา"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69f09f92f85a94cefb7c387a:ecommerce_scam",
+            "name": "ecommerce_scam"
+          },
+          "evidence": "ถูกหลอกลวงให้โอนเงินเพื่อจองที่ชาร์จแบตเตอรี่รถยนต์",
+          "source_agent": "RelationAgent",
+          "case_id": "69f09f92f85a94cefb7c387a"
+        },
+        {
+          "assertion_id": "69f09f92f85a94cefb7c387a-assertion-002",
+          "predicate": "CONTACTED_VIA",
+          "raw_subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "raw_object": "LINE",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นางสาว พรกิตตา นิธินันท์บภา",
+            "name": "นางสาว พรกิตตา นิธินันท์บภา"
+          },
+          "object": {
+            "label": "ContactChannel",
+            "key": "ContactChannel:LINE",
+            "name": "LINE"
+          },
+          "evidence": "ติดต่อคนร้ายผ่านแอปพลิเคชัน LINE",
+          "source_agent": "RelationAgent",
+          "case_id": "69f09f92f85a94cefb7c387a"
+        },
+        {
+          "assertion_id": "69f09f92f85a94cefb7c387a-assertion-003",
+          "predicate": "TRANSFERRED_TO",
+          "raw_subject": "นางสาว พรกิตตา นิธินันท์บภา",
+          "raw_object": "นายวิทยะ ปทุมมี",
+          "subject": {
+            "label": "Victim",
+            "key": "Victim:นางสาว พรกิตตา นิธินันท์บภา",
+            "name": "นางสาว พรกิตตา นิธินันท์บภา"
+          },
+          "object": {
+            "label": "EvidenceEntity",
+            "key": "EvidenceEntity:69f09f92f85a94cefb7c387a:นายวิทยะ ปทุมมี",
+            "name": "นายวิทยะ ปทุมมี"
+          },
+          "evidence": "โอนเงิน 2,850 บาท ไปยัง PromptPay ของนายวิทยะ",
+          "source_agent": "RelationAgent",
+          "case_id": "69f09f92f85a94cefb7c387a"
+        }
+      ],
+      "summary": {
+        "assertion_count": 3,
+        "event_count": 4,
+        "transfer_event_count": 0,
+        "damage_amount": 2850.0
+      },
+      "critic_status": "passed",
+      "repair_history": [
+        {
+          "method": "deterministic_kg_repair",
+          "input_issue_count": 1,
+          "output_assertion_count": 3
+        }
+      ],
+      "critic_issues": []
+    },
+    "kg_status": "written",
+    "kg_summary": {
+      "nodes": 20,
+      "edges": 22,
+      "events": 4,
+      "assertions": 3
+    },
+    "review_status": "passed",
+    "error_history": [
+      {
+        "case_index": 9,
+        "source": "entity",
+        "feedback": "EntityAgent Error: JSON schema validation failed: 1 validation error for EntityExtraction\nvictim_demographics.age_group_enum\n  Input should be 'under_18', '18_to_24', '25_to_34', '35_to_44', '45_to_54', '55_to_64', '65_plus' or 'unknown' [type=enum, input_value='25_to_30', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/enum"
+      }
+    ]
+  }
+]

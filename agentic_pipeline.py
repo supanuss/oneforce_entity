@@ -4,6 +4,7 @@ import re
 import sqlite3
 from datetime import datetime, timezone
 from typing import List, Dict, Any, TypedDict, Optional
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
@@ -17,22 +18,99 @@ load_dotenv()
 # 1. Pydantic Models for Structured Output
 # ==========================================
 
+class AttackType(str, Enum):
+    ECOMMERCE_SCAM = "ecommerce_scam"
+    ADVANCE_FEE_FRAUD = "advance_fee_fraud"
+    INVESTMENT_SCAM = "investment_scam"
+    ROMANCE_SCAM = "romance_scam"
+    CALL_CENTER = "call_center"
+    JOB_SCAM = "job_scam"
+    LOAN_SCAM = "loan_scam"
+    OTHER = "other"
+
+class Platform(str, Enum):
+    FACEBOOK = "facebook"
+    LINE = "line"
+    INSTAGRAM = "instagram"
+    TIKTOK = "tiktok"
+    TELEGRAM = "telegram"
+    PHONE_CALL = "phone_call"
+    SMS = "sms"
+    WEBSITE = "website"
+    DATING_APP = "dating_app"
+    OTHER = "other"
+
+class BankName(str, Enum):
+    KBANK = "KBANK"
+    SCB = "SCB"
+    BBL = "BBL"
+    KTB = "KTB"
+    BAY = "BAY"
+    TTB = "TTB"
+    GSB = "GSB"
+    BAAC = "BAAC"
+    GHB = "GHB"
+    CIMBT = "CIMBT"
+    UOBT = "UOBT"
+    TISCO = "TISCO"
+    KKP = "KKP"
+    LHFG = "LHFG"
+    ISLAMIC = "ISLAMIC"
+    TRUE_MONEY = "TRUE_MONEY"
+    PROMPTPAY = "PROMPTPAY"
+    OTHER = "OTHER"
+
+class HookPoint(str, Enum):
+    SOCIAL_MEDIA_AD = "social_media_ad"
+    DIRECT_MESSAGE = "direct_message"
+    SMS_LINK = "sms_link"
+    SEARCH_ENGINE = "search_engine"
+    PHONE_CALL = "phone_call"
+    OTHER = "other"
+
+class Gender(str, Enum):
+    MALE = "male"
+    FEMALE = "female"
+    UNKNOWN = "unknown"
+
+class AgeGroup(str, Enum):
+    UNDER_18 = "under_18"
+    AGE_18_TO_24 = "18_to_24"
+    AGE_25_TO_34 = "25_to_34"
+    AGE_35_TO_44 = "35_to_44"
+    AGE_45_TO_54 = "45_to_54"
+    AGE_55_TO_64 = "55_to_64"
+    AGE_65_PLUS = "65_plus"
+    UNKNOWN = "unknown"
+
+class PsychologicalTactic(str, Enum):
+    URGENCY = "urgency"
+    GREED = "greed"
+    FEAR = "fear"
+    SYMPATHY = "sympathy"
+    AUTHORITY = "authority"
+    OTHER = "other"
+
 class VictimDemographics(BaseModel):
     gender: Optional[str] = Field(None, description="เพศ (เช่น ชาย, หญิง, หรือ ไม่ระบุ)")
+    gender_enum: Gender = Field(..., description="เพศ (หมวดหมู่ Enum)")
     age: Optional[int] = Field(None, description="อายุ (ตัวเลข)")
     age_group: Optional[str] = Field(None, description="ช่วงอายุ (เช่น ผู้สูงอายุ (60 ปีขึ้นไป), วัยทำงาน, หรือ ไม่ระบุ)")
+    age_group_enum: AgeGroup = Field(..., description="ช่วงอายุ (หมวดหมู่ Enum)")
     province: Optional[str] = Field(None, description="จังหวัด (ถ้ามีระบุในเนื้อหา)")
     region: Optional[str] = Field(None, description="ภูมิภาค (ถ้ามีระบุ)")
 
 class BankAccount(BaseModel):
     owner_name: Optional[str] = Field(None, description="ชื่อเจ้าของบัญชี (บัญชีม้า)")
     bank_name: Optional[str] = Field(None, description="ชื่อธนาคาร (เช่น กสิกรไทย, ไทยพาณิชย์, KTB)")
+    bank_name_enum: BankName = Field(..., description="ชื่อธนาคาร (หมวดหมู่ Enum)")
     account_number: Optional[str] = Field(None, description="เลขบัญชี (เฉพาะตัวเลข)")
     transfer_amount: Optional[float] = Field(None, description="ยอดเงินที่โอนเข้าบัญชีนี้ (ถ้ามี)")
     transfer_date: Optional[str] = Field(None, description="วันที่โอนเงินเข้าบัญชีนี้ (ถ้ามีระบุในเนื้อหา เช่น วันที่ 5 พ.ค.)")
 
 class CommunicationChannel(BaseModel):
     platform: Optional[str] = Field(None, description="แพลตฟอร์ม (เช่น Line, Facebook, โทรศัพท์, Website)")
+    platform_enum: Platform = Field(..., description="แพลตฟอร์ม (หมวดหมู่ Enum)")
     contact_info: Optional[str] = Field(None, description="ข้อมูลติดต่อ (เช่น เบอร์โทรศัพท์, Line ID, ชื่อเพจ, หรือลิงก์เว็บ)")
 
 class ExtractionRelation(BaseModel):
@@ -43,9 +121,12 @@ class ExtractionRelation(BaseModel):
 
 class ScammerDimensions(BaseModel):
     attack_type: Optional[str] = Field(None, description="รูปแบบการหลอกลวง (Attack Type) เช่น online_mobile, call_center")
+    attack_type_enum: AttackType = Field(..., description="รูปแบบการหลอกลวง (หมวดหมู่ Enum)")
     scam_summary: Optional[str] = Field(None, description="ลักษณะพฤติการณ์สั้นๆ (หลอกลวงอย่างไร)")
     hook_point: Optional[str] = Field(None, description="จุดเริ่มต้นของการโดนตก (เช่น Facebook Ads, ค้นหางานใน Google, SMS, โทรศัพท์)")
+    hook_point_enum: HookPoint = Field(..., description="จุดเริ่มต้นของการโดนตก (หมวดหมู่ Enum)")
     psychological_tactics: List[str] = Field(default_factory=list, description="กลยุทธ์ทางจิตวิทยาที่มิจฉาชีพใช้ (เช่น สร้างความกลัว, หลอกให้โลภ, สร้างความรัก/ความเชื่อใจ)")
+    psychological_tactics_enum: List[PsychologicalTactic] = Field(..., description="กลยุทธ์ทางจิตวิทยาที่มิจฉาชีพใช้ (หมวดหมู่ Enum)")
     damage_amount: Optional[float] = Field(None, description="ความเสียหายรวม (บาท)")
     damage_amount_audit: Optional[Dict[str, Any]] = Field(None, description="รายละเอียดการคำนวณ damage_amount แบบ deterministic")
     communication_channels: List[CommunicationChannel] = Field(default_factory=list, description="ช่องทางการติดต่อสื่อสาร (เช่น โทรศัพท์, Line, Facebook)")
@@ -66,9 +147,12 @@ class EntityExtraction(BaseModel):
 
 class ProfileExtraction(BaseModel):
     attack_type: Optional[str] = Field(None, description="รูปแบบการหลอกลวง")
+    attack_type_enum: AttackType = Field(..., description="รูปแบบการหลอกลวง (หมวดหมู่ Enum)")
     scam_summary: Optional[str] = Field(None, description="สรุปพฤติการณ์")
     hook_point: Optional[str] = Field(None, description="จุดเริ่มต้นของการโดนตก")
+    hook_point_enum: HookPoint = Field(..., description="จุดเริ่มต้นของการโดนตก (หมวดหมู่ Enum)")
     psychological_tactics: List[str] = Field(default_factory=list, description="กลยุทธ์ทางจิตวิทยา")
+    psychological_tactics_enum: List[PsychologicalTactic] = Field(..., description="กลยุทธ์ทางจิตวิทยา (หมวดหมู่ Enum)")
 
     @field_validator("attack_type", "scam_summary", "hook_point", mode="before")
     @classmethod
@@ -1051,14 +1135,17 @@ def entity_agent_node(state: AgentState) -> AgentState:
 {
   "victim_demographics": {
     "gender": null,
+    "gender_enum": "male",
     "age": null,
     "age_group": null,
+    "age_group_enum": "18_to_24",
     "province": null,
     "region": null
   },
   "communication_channels": [
     {
       "platform": null,
+      "platform_enum": "facebook",
       "contact_info": null
     }
   ],
@@ -1067,6 +1154,7 @@ def entity_agent_node(state: AgentState) -> AgentState:
     {
       "owner_name": null,
       "bank_name": null,
+      "bank_name_enum": "KBANK",
       "account_number": null,
       "transfer_amount": null,
       "transfer_date": null
@@ -1160,9 +1248,12 @@ def profile_agent_node(state: AgentState) -> AgentState:
 	ตอบ JSON ตาม schema นี้เท่านั้น:
 	{
 	  "attack_type": null,
+	  "attack_type_enum": "ecommerce_scam",
 	  "scam_summary": null,
 	  "hook_point": null,
-	  "psychological_tactics": []
+	  "hook_point_enum": "social_media_ad",
+	  "psychological_tactics": [],
+	  "psychological_tactics_enum": []
 	}
 	"""
 
@@ -2386,7 +2477,7 @@ if __name__ == "__main__":
     if cases:
         print(f"Loaded {len(cases)} cases.")
         
-        case_limit = int(os.getenv("CASE_LIMIT", str(len(cases))))
+        case_limit = int(os.getenv("CASE_LIMIT", "10"))
         cases_to_process = cases if case_limit <= 0 else cases[:case_limit]
         print(f"Processing {len(cases_to_process)} cases.")
         
@@ -2421,11 +2512,8 @@ if __name__ == "__main__":
         final_state = app.invoke(initial_state)
         final_extractions = rescore_extractions(cases_to_process, final_state["extracted_data"], workspace_dir)
         
-        output_file = os.path.join(workspace_dir, "extracted_v3.json")
+        output_file = os.path.join(workspace_dir, "extracktest.json")
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(final_extractions, f, indent=2, ensure_ascii=False)
-        legacy_output_file = os.path.join(workspace_dir, "extracted.json")
-        with open(legacy_output_file, "w", encoding="utf-8") as f:
             json.dump(final_extractions, f, indent=2, ensure_ascii=False)
             
         print(f"\n🎉 Pipeline complete! Saved results to {output_file}")

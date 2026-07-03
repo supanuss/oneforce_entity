@@ -51,7 +51,7 @@ class ForensicsKGBuilder:
         """, **victim_props)
 
         # 2. Attack Type Node
-        attack_type = dimensions.get("attack_type")
+        attack_type = dimensions.get("attack_type_enum") or dimensions.get("attack_type")
         if attack_type:
             session.run("""
                 MERGE (v:Victim {name: $victim})
@@ -60,7 +60,7 @@ class ForensicsKGBuilder:
             """, victim=victim_name, attack_type=attack_type)
 
         # 3. Hook Point
-        hook_point = dimensions.get("hook_point")
+        hook_point = dimensions.get("hook_point_enum") or dimensions.get("hook_point")
         if hook_point:
             session.run("""
                 MERGE (v:Victim {name: $victim})
@@ -69,7 +69,7 @@ class ForensicsKGBuilder:
             """, victim=victim_name, hook_point=hook_point)
 
         # 4. Tactics
-        tactics = dimensions.get("psychological_tactics", [])
+        tactics = dimensions.get("psychological_tactics_enum") or dimensions.get("psychological_tactics", [])
         for tactic in tactics:
             if tactic:
                 session.run("""
@@ -81,8 +81,8 @@ class ForensicsKGBuilder:
         # 5. Platforms
         channels = dimensions.get("communication_channels", [])
         for ch in channels:
-            platform = ch.get("platform")
-            contact_info = ch.get("contact_info", "ไม่ระบุ")
+            platform = ch.get("platform_enum") or ch.get("platform")
+            contact_info = ch.get("contact_info") or "ไม่ระบุ"
             if platform:
                 session.run("""
                     MERGE (v:Victim {name: $victim})
@@ -104,10 +104,11 @@ class ForensicsKGBuilder:
         accounts = dimensions.get("bank_accounts", [])
         for acc in accounts:
             acc_num = acc.get("account_number")
-            bank_name = acc.get("bank_name")
+            bank_name = acc.get("bank_name_enum") or acc.get("bank_name")
             owner_name = acc.get("owner_name")
-            t_amount = acc.get("transfer_amount", 0.0)
-            t_date = acc.get("transfer_date", "ไม่ระบุ")
+            t_amount = acc.get("transfer_amount")
+            if t_amount is None: t_amount = 0.0
+            t_date = acc.get("transfer_date") or "ไม่ระบุ"
             
             if acc_num and acc_num != "ไม่ระบุ":
                 # Create Bank Account
@@ -143,10 +144,17 @@ class ForensicsKGBuilder:
 def run_build_kg(input_file: str = None):
     workspace_dir = os.getenv("WORKSPACE_DIR", os.getcwd())
     if not input_file:
-        # Prefer extracted_v3.json, fallback to extracted_v2.json
+        # Prefer extracktest.json, then extracted_v3.json
+        test_path = os.path.join(workspace_dir, "extracktest.json")
         v3_path = os.path.join(workspace_dir, "extracted_v3.json")
         v2_path = os.path.join(workspace_dir, "extracted_v2.json")
-        input_file = v3_path if os.path.exists(v3_path) else v2_path
+        
+        if os.path.exists(test_path):
+            input_file = test_path
+        elif os.path.exists(v3_path):
+            input_file = v3_path
+        else:
+            input_file = v2_path
 
     if not os.path.exists(input_file):
         print(f"File {input_file} not found. Please run agentic_pipeline.py first.")
